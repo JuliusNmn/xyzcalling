@@ -1,0 +1,3 @@
+# Isolate from the OSC environment; requires Python 3.12 for this prototype.
+# MediaPipe brings OpenCV and NumPy as dependencies.
+mediapipe==0.10.32

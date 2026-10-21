@@ -1,0 +1,49 @@
+{
+  "frames": 144,
+  "fps": 30.0,
+  "last_key_seconds": 4.766666666666667,
+  "controlled_bones": [
+    "Hips",
+    "Spine",
+    "Spine1",
+    "Spine2",
+    "LeftArm",
+    "LeftForeArm",
+    "RightArm",
+    "RightForeArm",
+    "LeftUpLeg",
+    "LeftLeg",
+    "RightUpLeg",
+    "RightLeg",
+    "LeftFoot",
+    "RightFoot"
+  ],
+  "held_frames_or_limb_updates": 0,
+  "mean_solved_direction_error_degrees": 5.05042580638917,
+  "in_place": true,
+  "smoothing_alpha": 0.6,
+  "limitations": [
+    "No root travel, finger or facial capture",
+    "No foot locking; sliding/penetration possible",
+    "Single-vector limbs do not recover axial twist",
+    "Occluded limbs hold their previous local rotation",
+    "Direction error is fit to estimates, not capture accuracy",
+    "No automatic seamless-loop guarantee"
+  ],
+  "verified": true,
+  "verification": "Export/reimport joint heads, not motion-capture accuracy",
+  "bones": 65,
+  "mesh_count": 1,
+  "reimported_action_range": [
+    1.0,
+    144.0
+  ],
+  "max_fbx_roundtrip_joint_error_meters": 7.017525742298997e-05,
+  "source_sha256": "8ce0844554d0b4fd8353638214165cba69a4237a8fd3b305226157bccc59b421",
+  "landmarks_sha256": "193b5a07e6caea6c6a947fa9903fac9f1bb726f51974b9efd336b9d7dccb2bfa",
+  "baked_sha256": "29956c4784cab38de87265d83bb42e21c384cf8be8c3c6918841118ab28981d4",
+  "baked_path": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/mocap/Chicken-Dance-MediaPipe-v2.fbx",
+  "capture_source": "Rendered Mixamo Chicken Dance; synthetic calibration video",
+  "actual_mediapipe_inference": true,
+  "detected_frames": 144
+}

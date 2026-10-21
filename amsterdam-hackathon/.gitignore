@@ -1,0 +1,17 @@
+.venv/
+.venv-*/
+__pycache__/
+*.pyc
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# TouchDesigner rebuildable imports and automatic backups.
+TDImportCache/
+Backup/
+*.bak
+TD.[0-9]*.toe
+
+# Machine-local mocap payloads; scripts and reports stay versioned.
+mocap/local/

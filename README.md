@@ -1,5 +1,9 @@
 # Pose Studio
 
+Related hackathon work is isolated in [`amsterdam-hackathon/`](amsterdam-hackathon/HANDOFF.md):
+TouchDesigner, djay OSC and the offline MediaPipe-to-Mixamo FBX pilot. It is not
+wired into this dashboard and does not change its setup or runtime.
+
 A TypeScript dashboard for MediaPipe Pose Landmarker, with a local video library,
 live skeleton/landmark overlays, playback and confidence controls, and JSON export
 of the current frame. MediaPipe's full model, JavaScript, and WASM are served
