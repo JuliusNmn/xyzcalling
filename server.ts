@@ -39,6 +39,7 @@ app.get('/videos/:name', async (request, response) => {
   response.sendFile(name, { root: videoDirectory, dotfiles: 'deny' });
 });
 app.use('/wasm', express.static(path.join(root, 'node_modules/@mediapipe/tasks-vision/wasm')));
+app.use('/character', express.static(path.join(root, 'amsterdam-hackathon/Geo'), { dotfiles: 'deny' }));
 app.get('/models/pose_landmarker_full.task', (_request, response) => {
   response.sendFile(path.join(root, 'models/pose_landmarker_full.task'));
 });

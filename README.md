@@ -1,8 +1,8 @@
 # Pose Studio
 
-Related hackathon work is isolated in [`amsterdam-hackathon/`](amsterdam-hackathon/HANDOFF.md):
-TouchDesigner, djay OSC and the offline MediaPipe-to-Mixamo FBX pilot. It is not
-wired into this dashboard and does not change its setup or runtime.
+Related hackathon work lives in [`amsterdam-hackathon/`](amsterdam-hackathon/HANDOFF.md).
+The dashboard uses its Mixamo character and ports its custom retargeting solver
+to the browser. TouchDesigner, djay OSC and the offline tools remain separate.
 
 A TypeScript dashboard for MediaPipe Pose Landmarker, with a local video library,
 live skeleton/landmark overlays, playback and confidence controls, and JSON export
@@ -53,6 +53,45 @@ or switching videos. Landmarks use normalized image coordinates; world landmarks
 are in meters relative to the hip midpoint. Pose array indices are not stable IDs.
 The minimum visibility slider only filters the overlay. Export captures the most
 recent analyzed frame and includes its video timestamp.
+
+## Character preview and solvers
+
+Choose **Character + video** to load the textured Mixamo character from
+`amsterdam-hackathon/Geo/Chicken Dance.fbx`. Its embedded dance is disabled:
+only the current video's MediaPipe results drive the preview. Drag to orbit,
+scroll to zoom, or use **Reset camera**. Character assets load on demand.
+
+The **Inverse kinematics** selector switches between:
+
+- **Custom · rest-aware**: browser port of `mocap/blender_retarget.py`. Fits the
+  hips and spine to torso bases, then swings the arms, legs and feet toward
+  landmark directions using the FBX's actual rest axes (14 controlled bones).
+- **Kalidokit · 1.1.5**: `Pose.solve` with neutral-pose calibration, anatomical
+  side mapping and rotation conversion into this Mixamo rig (12 controlled
+  bones). Feet inherit leg motion. This is an adapter for the supplied rig,
+  not a general-purpose retargeter for arbitrary FBX files.
+
+Both have independent **Rotation smoothing**, **Tracking visibility** and
+**Track legs** settings, retained when switching solvers during the session.
+Smoothing uses quaternion interpolation compensated for the video frame interval:
+0% is immediate; higher values reduce jitter with more lag. The custom default
+is 40% retention (equivalent to the pilot's 0.6 interpolation at 30 FPS);
+Kalidokit defaults to 65%. Seeking, changing video/person or switching solvers
+resets the filter so motion does not blend across unrelated frames.
+
+Low-confidence joints hold their previous local rotations. **Show character
+skeleton** exposes the parsed rig, and **Detected person** chooses a MediaPipe
+pose array entry (increase **Maximum people** to detect more people).
+All solving remains in the browser, including for browser-only local videos.
+
+This is an in-place body preview: no root translation, foot locking, hand/finger
+or face animation, and no animation-file export. Monocular depth ambiguity,
+occlusion and missed detections can still produce incorrect poses or foot sliding.
+
+Run `npm test` for solver checks against the actual FBX: custom direction fitting,
+Kalidokit neutral/side mapping, smoothing, bone-length preservation, confidence
+handling and reset behavior. These checks verify implementation behavior, not
+motion-capture accuracy on real footage.
 
 ## Keep it running on macOS
 

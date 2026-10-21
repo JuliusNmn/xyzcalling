@@ -1,5 +1,6 @@
 import { FilesetResolver, PoseLandmarker, type PoseLandmarkerResult, type NormalizedLandmark } from '@mediapipe/tasks-vision';
 import './style.css';
+import type { CharacterView } from './character-view';
 
 type VideoEntry = { name: string; title: string; url: string; bytes: number; browserOnly?: boolean };
 const icon = (name: string) => {
@@ -35,10 +36,14 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <div id="error" class="error-banner" role="alert" hidden></div>
     <section class="workspace">
       <div class="viewer-column">
+        <div class="view-switch" aria-label="Preview view"><button id="view-video" aria-pressed="true">Video</button><button id="view-character" aria-pressed="false">Character + video</button><span>Inspect the motion from every angle</span></div>
+        <div id="preview-grid" class="preview-grid">
         <div class="viewer-panel">
           <div class="viewer-toolbar"><div><span class="live-dot"></span><strong>Video preview</strong><span id="resolution" class="muted">—</span></div><span id="overlay-state">LANDMARK OVERLAY</span></div>
           <div class="stage" id="stage"><video id="video" controls playsinline preload="auto"></video><canvas id="overlay" aria-label="Detected pose markers"></canvas><div id="empty-state">${icon('film')}<h2>Select a video to begin</h2><p>Choose a file from your video library.</p></div></div>
           <div class="video-caption"><div><span class="tiny-label">NOW EXPLORING</span><h2 id="video-title">No video selected</h2></div><label class="speed-label">Speed <select id="speed" aria-label="Playback speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label></div>
+        </div>
+        <div id="character-preview" class="viewer-panel character-panel" hidden></div>
         </div>
         <div class="stats"><div><span>Detected poses</span><strong id="poses">—</strong><small>people in frame</small></div><div><span>Visible landmarks</span><strong id="landmarks">—</strong><small>33 points per pose</small></div><div><span>Inference time</span><strong id="latency">—</strong><small>milliseconds / frame</small></div><div><span>Tracking rate</span><strong id="fps">—</strong><small>frames / second</small></div></div>
         <div class="insight"><span class="insight-icon">${icon('pose')}</span><div><strong>A new perspective on movement</strong><p>Play or scrub through your video to inspect the pose. Markers follow the body; confidence controls which points are shown.</p></div></div>
@@ -46,6 +51,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <aside class="controls-panel">
         <div class="panel-heading"><h2>Tracking controls</h2><span class="small-tag">LIVE</span></div>
         <div class="model-status"><span id="status-dot" class="status-dot loading"></span><div><strong id="status" role="status">Loading pose model…</strong><small id="status-detail">Preparing the local runtime</small></div><button id="retry" class="icon-button" aria-label="Retry model loading" hidden>${icon('refresh')}</button></div>
+        <div id="character-controls" class="control-section" hidden></div>
         <div class="control-section"><h3>DETECTION</h3><label class="field-label" for="num-poses">Maximum people</label><select id="num-poses"><option value="1">1 person</option><option value="2">2 people</option><option value="4">4 people</option></select><div class="range-label"><label for="confidence">Detection confidence</label><output id="confidence-value">50%</output></div><input id="confidence" type="range" min="10" max="90" value="50" step="5"/><div class="range-ends"><span>More sensitive</span><span>More certain</span></div></div>
         <div class="control-section"><h3>OVERLAY</h3><label class="toggle-row"><span>Show landmarks</span><input id="show-points" type="checkbox" checked/><span class="switch"></span></label><label class="toggle-row"><span>Show skeleton</span><input id="show-lines" type="checkbox" checked/><span class="switch"></span></label><label class="toggle-row"><span>Landmark numbers</span><input id="show-labels" type="checkbox"/><span class="switch"></span></label><div class="range-label"><label for="visibility">Minimum visibility</label><output id="visibility-value">50%</output></div><input id="visibility" type="range" min="0" max="100" value="50" step="5"/></div>
         <div class="legend"><span><i class="left-color"></i> Left side</span><span><i class="right-color"></i> Right side</span><span><i class="center-color"></i> Center</span></div>
@@ -75,6 +81,9 @@ let rateStart = performance.now();
 let modelLoading = false;
 let initializing: Promise<void> | undefined;
 let configTimer: ReturnType<typeof setTimeout>;
+let characterView: CharacterView | undefined;
+let characterLoading = false;
+let showCharacter = false;
 
 function error(message: string) {
   element('error').textContent = message;
@@ -86,6 +95,7 @@ function status(title: string, detail: string, loading = false) {
   element('status-dot').classList.toggle('loading', loading);
 }
 function clearResults() {
+  characterView?.reset(true);
   latest = undefined;
   lastVideoTime = -1;
   context.clearRect(0, 0, canvas.width, canvas.height);
@@ -189,6 +199,7 @@ function infer(now: number) {
     const start = performance.now();
     // Wall-clock timestamps stay increasing across seeks, loops, and source changes.
     latest = model.detectForVideo(inputCanvas, start);
+    characterView?.update(latest.worldLandmarks, latest.landmarks, latestMediaTime);
     lastInference = now;
     element('latency').textContent = (performance.now() - start).toFixed(0);
     element('poses').textContent = String(latest.landmarks.length);
@@ -285,7 +296,30 @@ element('local-file').addEventListener('change', () => {
 });
 window.addEventListener('pagehide', event => {
   if (!event.persisted && browserVideo) URL.revokeObjectURL(browserVideo.url);
+  if (!event.persisted) characterView?.dispose();
 });
+async function setView(character: boolean) {
+  showCharacter = character;
+  element('preview-grid').classList.toggle('show-character', character);
+  element('character-preview').hidden = !character;
+  element('character-controls').hidden = !character;
+  element('view-video').setAttribute('aria-pressed', String(!character));
+  element('view-character').setAttribute('aria-pressed', String(character));
+  if (character && !characterView && !characterLoading) {
+    characterLoading = true;
+    element('character-preview').textContent = 'Preparing 3D view…';
+    try {
+      const { CharacterView } = await import('./character-view');
+      characterView = new CharacterView(element('character-preview'), element('character-controls'));
+      if (latest) characterView.update(latest.worldLandmarks, latest.landmarks, latestMediaTime);
+    } catch (reason) {
+      element('character-preview').textContent = `3D view unavailable: ${String(reason)}. Switch to Video and try again.`;
+    } finally { characterLoading = false; }
+  }
+  characterView?.setVisible(showCharacter);
+}
+element('view-video').addEventListener('click', () => void setView(false));
+element('view-character').addEventListener('click', () => void setView(true));
 element('retry').addEventListener('click', () => void loadModel());
 element('speed').addEventListener('change', () => { video.playbackRate = Number(element<HTMLSelectElement>('speed').value); });
 video.addEventListener('loadedmetadata', () => {
