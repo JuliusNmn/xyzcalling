@@ -105,5 +105,10 @@ const server = app.listen(port, host, () => {
   console.log(`Video library: ${videoDirectory}`);
 });
 server.on('error', error => { console.error(error); process.exit(1); });
-process.on('SIGTERM', () => server.close(() => process.exit(0)));
-process.on('SIGINT', () => server.close(() => process.exit(0)));
+// Browsers trust loopback origins for binary downloads. Retain the private-network listener too.
+const localServer = !['127.0.0.1', 'localhost', '::1', '0.0.0.0', '::'].includes(host)
+  ? app.listen(port, '127.0.0.1', () => console.log(`Local downloads: http://127.0.0.1:${port}`)) : undefined;
+localServer?.on('error', error => { console.error(`Local download listener unavailable: ${error.message}`); });
+const shutdown = () => { localServer?.close(); server.close(() => process.exit(0)); };
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);

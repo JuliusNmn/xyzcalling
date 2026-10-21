@@ -173,3 +173,7 @@ uv run --python 3.12 pose_landmarker.py
 ```
 
 Reference: [MediaPipe Pose Landmarker for Web](https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/web_js).
+
+### Motion signals for TouchDesigner
+
+The **Motion Signals** panel adds 20 derived channels with synchronized timeline graphs: body/hand/foot speeds, movement acceleration, hand/foot separation, hand/foot heights, elbow/knee angles, torso lean/twist and arm reach. Analyze the selected bar loop or the complete video, then download a native binary **.bclip** with named channels at 30 Hz, validity flags and optional 33-joint positions. Full-video analysis also works without an audio sidecar. See [the metric definitions, coordinate conventions and TouchDesigner workflow](docs/motion-metrics.md).

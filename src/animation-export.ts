@@ -26,7 +26,7 @@ function waitFor(video: HTMLVideoElement, event: string, signal: AbortSignal, ac
 }
 
 export async function extractAnimation(options: {
-  url: string; analysis: AudioAnalysis; selection: ClipSelection;
+  url: string; analysis?: AudioAnalysis; source?: { name: string; bytes: number }; selection: ClipSelection;
   solver: SolverKind; settings: SolverSettings; person: number; numPoses: number; confidence: number;
   signal: AbortSignal; progress: (fraction: number, message: string) => void;
 }) {
@@ -85,7 +85,7 @@ export async function extractAnimation(options: {
     if (!tracked) throw new Error('No usable body poses were found in this selection. Try another range or person.');
     return {
       schema: 'pose-studio.dance-animation', version: 2,
-      source: { ...analysis.source, ...selectionMetadata(selection) },
+      source: { ...(analysis?.source ?? options.source ?? { name: 'video', bytes: 0 }), ...selectionMetadata(selection) },
       duration_seconds: duration, sample_rate_hz: 30, timebase: 'clip-seconds',
       solver: { name: options.solver, settings: options.settings, person_index: options.person },
       pose_model: { name: 'mediapipe-pose-landmarker-full', version: '1.1.1', max_width: 960,
@@ -94,8 +94,8 @@ export async function extractAnimation(options: {
         tracked_fraction: tracked / times.length, note: 'Missing or low-confidence bones hold their previous pose; initial gaps use rest pose. Person indices are detection order, not persistent identities.' },
       rig: { name: 'Chicken Dance Mixamo', space: 'Three.js Y-up, bone-local transforms',
         in_place: true, root_transform: { position: character.position.toArray(), quaternion: character.quaternion.toArray(), scale: character.scale.toArray() }, bones: skeleton },
-      rhythm: excerptRhythm(analysis, selection),
-      animation: bakeAnimation(rig, times, rotations, `${selectionLabel(selection)} · ${analysis.source.name}`),
+      rhythm: analysis ? excerptRhythm(analysis, selection) : null,
+      animation: bakeAnimation(rig, times, rotations, `${selectionLabel(selection)} · ${analysis?.source.name ?? options.source?.name ?? 'video'}`),
       frames,
       landmark_coordinates: { landmarks: 'MediaPipe normalized image coordinates', world_landmarks: 'MediaPipe meters relative to hip midpoint; x right, y down, z away from camera' },
     };

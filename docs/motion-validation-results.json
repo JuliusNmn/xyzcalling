@@ -1,0 +1,28 @@
+{
+  "build": "2023.11760",
+  "channels": 174,
+  "samples": 30,
+  "rate": 30.0,
+  "max_absolute_error": 7.450478449300135e-06,
+  "errors": "",
+  "browser_validation": {
+    "selected_loop": {
+      "bars": [
+        10,
+        13
+      ],
+      "samples": 233,
+      "rate": 30,
+      "download": "42-channel bclip downloaded successfully via localhost"
+    },
+    "complete_video_without_sidecar": {
+      "duration_seconds": 1.08,
+      "samples": 33,
+      "rate": 30,
+      "touchdesigner_import": "42 channels, 33 samples, 30 Hz; no errors; clip/source time checked"
+    },
+    "cancel_and_retry": "passed",
+    "chrome_localhost_download": "42-channel bclip, 8.7 KB, Done",
+    "loopback_and_private_network_health": "passed"
+  }
+}

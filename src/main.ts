@@ -2,6 +2,7 @@ import { FilesetResolver, PoseLandmarker, type PoseLandmarkerResult, type Normal
 import './style.css';
 import type { CharacterView } from './character-view';
 import { AudioTimeline } from './audio-timeline';
+import { MotionPanel } from './motion-panel';
 import { DEFAULT_SETTINGS } from './rig/solvers';
 
 type VideoEntry = { name: string; title: string; url: string; bytes: number; browserOnly?: boolean; analysisUrl?: string };
@@ -49,6 +50,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         </div>
         <div class="stats"><div><span>Detected poses</span><strong id="poses">—</strong><small>people in frame</small></div><div><span>Visible landmarks</span><strong id="landmarks">—</strong><small>33 points per pose</small></div><div><span>Inference time</span><strong id="latency">—</strong><small>milliseconds / frame</small></div><div><span>Tracking rate</span><strong id="fps">—</strong><small>frames / second</small></div></div>
         <section id="audio-timeline" class="audio-timeline" aria-label="Audio analysis and dance extraction"></section>
+        <section id="motion-panel" class="audio-timeline motion-panel" aria-label="Motion metrics and TouchDesigner export"></section>
       </div>
       <aside class="controls-panel">
         <div class="panel-heading"><h2>Tracking controls</h2><span class="small-tag">LIVE</span></div>
@@ -87,12 +89,17 @@ let characterView: CharacterView | undefined;
 let characterLoading = false;
 let previewMode: 'video' | 'character' | 'compare' = 'video';
 let extractingAnimation = false;
-const audioTimeline = new AudioTimeline(element('audio-timeline'), video, busy => {
-  extractingAnimation = busy;
-}, () => ({
+let motionPanel: MotionPanel;
+const extractionConfig = () => ({
   ...(characterView?.exportSettings() ?? { solver: 'custom' as const, settings: { ...DEFAULT_SETTINGS.custom }, person: 0 }),
   numPoses: settings().numPoses, confidence: settings().minPoseDetectionConfidence,
-}));
+});
+function extractionBusy(busy: boolean) {
+  extractingAnimation = busy; audioTimeline.setBusy(busy); motionPanel?.setBusy(busy);
+}
+const audioTimeline = new AudioTimeline(element('audio-timeline'), video, extractionBusy, extractionConfig,
+  () => motionPanel?.refreshSelection());
+motionPanel = new MotionPanel(element('motion-panel'), video, () => audioTimeline.getSelection(), extractionConfig, extractionBusy);
 
 function error(message: string) {
   element('error').textContent = message;
@@ -258,6 +265,7 @@ function selectVideo(entry: VideoEntry) {
     : 'Processed in your browser.<br>Your video stays on your network.';
   video.src = entry.url; video.load();
   void audioTimeline.setSource(entry);
+  motionPanel.setSource(entry);
   renderLibrary();
   // A fresh graph avoids carrying tracking state from a previous video.
   if (model) void loadModel();
@@ -289,7 +297,7 @@ async function refreshLibrary() {
     if (!existing && (browserVideo || videos.length)) selectVideo(browserVideo || videos[0]);
     else if (!existing && !videos.length) {
       selected = undefined; video.pause(); video.removeAttribute('src'); video.load(); clearResults();
-      void audioTimeline.setSource();
+      void audioTimeline.setSource(); motionPanel.setSource();
       element('empty-state').hidden = false; element('video-title').textContent = 'No video selected';
     }
     renderLibrary();
@@ -309,6 +317,7 @@ window.addEventListener('pagehide', event => {
   if (!event.persisted && browserVideo) URL.revokeObjectURL(browserVideo.url);
   if (!event.persisted) characterView?.dispose();
   if (!event.persisted) audioTimeline.dispose();
+  if (!event.persisted) motionPanel.dispose();
 });
 async function setView(mode: typeof previewMode) {
   previewMode = mode;

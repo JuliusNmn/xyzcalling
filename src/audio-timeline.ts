@@ -5,6 +5,7 @@ import type { AnimationPreview, DanceAnimation } from './animation-preview';
 export type AudioVideo = { name: string; bytes: number; url: string; analysisUrl?: string; browserOnly?: boolean };
 export class AudioTimeline {
   private source?: AudioVideo;
+  private externalBusy = false;
   private analysis?: AudioAnalysis;
   private selection?: ClipSelection;
   private generation = 0;
@@ -24,7 +25,8 @@ export class AudioTimeline {
     }
   };
   constructor(private host: HTMLElement, private video: HTMLVideoElement, private busy: (value: boolean) => void,
-    private config: () => { solver: SolverKind; settings: SolverSettings; person: number; numPoses: number; confidence: number }) {
+    private config: () => { solver: SolverKind; settings: SolverSettings; person: number; numPoses: number; confidence: number },
+    private selectionChanged: () => void = () => {}) {
     host.innerHTML = `
       <div class="rhythm-heading"><div><span class="eyebrow">MUSIC & MOVEMENT</span><h2>Find your phrase.</h2></div><strong id="audio-tempo">— BPM</strong></div>
       <div class="analysis-actions"><button id="reload-analysis" class="text-button">Reload analysis</button><button id="import-analysis" class="text-button">Open analysis JSON</button><input id="analysis-file" type="file" accept=".json,application/json" hidden /></div>
@@ -93,6 +95,8 @@ export class AudioTimeline {
     this.raf = requestAnimationFrame(tick);
   }
   private el<T extends HTMLElement = HTMLElement>(id: string) { return this.host.querySelector<T>(`#${id}`)!; }
+  getSelection() { return this.selection; }
+  setBusy(busy: boolean) { this.externalBusy = busy; this.choose(); }
   private message(text: string) { this.el('analysis-status').textContent = text; }
   async setSource(source?: AudioVideo) {
     this.extraction?.abort(); this.source = source; this.auditioning = false;
@@ -104,7 +108,7 @@ export class AudioTimeline {
     this.auditioning = false; this.playButton();
     const generation = ++this.generation;
     this.request?.abort(); this.request = new AbortController();
-    this.analysis = undefined; this.selection = undefined; this.el('audio-content').hidden = true;
+    this.analysis = undefined; this.selection = undefined; this.selectionChanged(); this.el('audio-content').hidden = true;
     this.el('audio-tempo').textContent = '— BPM';
     if (!this.source) { this.message('Select a video to load its audio analysis.'); return; }
     if (!this.source.analysisUrl) { this.message('Open the analysis JSON saved beside this local video. Both files stay in your browser.'); return; }
@@ -159,8 +163,8 @@ export class AudioTimeline {
     this.el<HTMLButtonElement>('next-beat').disabled = full || !!this.extraction || !selectBars(this.analysis, first, count, beatOffset + 1);
     this.el<HTMLButtonElement>('play-phrase').disabled = !this.selection || !!this.extraction;
     this.checkPreview();
-    this.el<HTMLButtonElement>('preview-dance').disabled = !this.selection || !!this.extraction;
-    this.el<HTMLButtonElement>('export-dance').disabled = !this.prepared || !!this.extraction;
+    this.el<HTMLButtonElement>('preview-dance').disabled = !this.selection || !!this.extraction || this.externalBusy;
+    this.el<HTMLButtonElement>('export-dance').disabled = !this.prepared || !!this.extraction || this.externalBusy;
     if (this.selection) {
       const s = this.selection;
       const beats = this.analysis.beats_seconds.filter(t => t >= s.start && t < s.end).length;
@@ -176,6 +180,7 @@ export class AudioTimeline {
         `Choose a starting bar with ${count} complete bars remaining, and a beat offset that keeps both ends inside the video.`;
       if (wasPlaying) this.video.pause();
     }
+    this.selectionChanged();
     this.playButton();
     this.draw();
   }
@@ -273,7 +278,7 @@ export class AudioTimeline {
     this.el('cancel-extraction').hidden = true; this.el('extraction-progress').hidden = true; this.choose();
   }
   private async prepare() {
-    if (!this.analysis || !this.selection || !this.source || this.extraction) return;
+    if (!this.analysis || !this.selection || !this.source || this.extraction || this.externalBusy) return;
     const source = this.source, analysis = this.analysis, selection = this.selection, generation = this.generation;
     const config = this.config() ?? { solver: 'custom' as const, settings: DEFAULT_SETTINGS.custom, person: 0, numPoses: 1, confidence: .5 };
     const key = this.previewKey();
@@ -305,7 +310,7 @@ export class AudioTimeline {
   }
   private async export() {
     this.checkPreview();
-    if (!this.prepared || this.extraction) return;
+    if (!this.prepared || this.extraction || this.externalBusy) return;
     const { data, source, selection } = this.prepared, generation = this.generation;
     const format = this.el<HTMLSelectElement>('animation-format').value;
     const controller = this.beginOperation();
