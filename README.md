@@ -92,8 +92,8 @@ skeleton** exposes the parsed rig, and **Detected person** chooses a MediaPipe
 pose array entry (increase **Maximum people** to detect more people).
 All solving remains in the browser, including for browser-only local videos.
 
-This is an in-place body preview: no root translation, foot locking, hand/finger
-or face animation, and no animation-file export. Monocular depth ambiguity,
+This is an in-place body preview and exporter: no root translation, foot locking,
+hand/finger or face animation. Monocular depth ambiguity,
 occlusion and missed detections can still produce incorrect poses or foot sliding.
 
 Run `npm test` for solver checks against the actual FBX: custom direction fitting,
@@ -128,10 +128,24 @@ bar boundaries and tempo. Matching sidecars are reused; `--force` regenerates.
 The viewer loads these files automatically. Use **Reload analysis** after an
 extraction, select a starting bar and **4 / 8 / 16 / 32 / 64 bars** or **Complete
 video**, audition the phrase with **Loop selection** (on by default),
-then **Extract & export animation JSON**. Export samples the selected range at
-30 FPS and includes baked Mixamo quaternion animation, source landmarks, timing,
-solver settings and tracking-quality counts. Browser-only videos support
+then choose **FBX** or **JSON** and press **Extract & export animation**. Export
+samples the selected range at 30 FPS. FBX includes the textured, skinned Mixamo
+character with the selected solver's animation; JSON includes quaternion animation,
+source landmarks, timing, solver settings and tracking-quality counts. Browser-only videos support
 manually opening their sidecar JSON without uploading anything.
+
+FBX conversion requires Blender on the server (`/Applications/Blender.app` on
+macOS, `blender` on PATH elsewhere, or set `BLENDER_BIN` to its executable).
+Only the skeleton and baked rotation tracks are sent to the server; the source
+video and detected landmarks stay in the browser. Temporary conversion files
+are removed after download or cancellation. FBX selections are limited to ten
+minutes. JSON export remains entirely in the browser.
+
+Run `npm run test:fbx` for a complete render → MediaPipe full → browser solver →
+HTTP FBX export → reimport/render comparison. Requires Blender, FFmpeg, `uv`, and
+the model installed by `npm run setup`. Outputs go to an ignored `artifacts/`
+directory. See [FBX validation results](docs/fbx-validation.md) for measured
+export fidelity and the remaining motion-reconstruction error.
 
 Starting-bar and beat-offset **−/+** buttons let you move through the video and
 correct a misplaced downbeat. Offsets shift both ends and the displayed/exported

@@ -8,5 +8,6 @@ node_modules/
 dist/
 dist-server/
 logs/
+artifacts/
 videos/*
 !videos/.gitkeep

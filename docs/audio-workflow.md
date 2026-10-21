@@ -44,13 +44,15 @@ explicit error; silent audio produces a waveform and empty beat/bar arrays.
    video**. Without opening that panel, export uses the custom solver defaults
    and Person 1. The main detection confidence and maximum-people settings also
    apply. People are indexed by detection order, not persistent identity.
-6. **Extract & export animation JSON** samples this exact time interval at 30 FPS
+6. Choose **FBX** or **JSON**, then **Extract & export animation** to sample this exact time interval at 30 FPS
    using a separate video decoder and MediaPipe instance, then bakes bone-local
    quaternion tracks. It doesn't depend on how much of the video was played.
    Cancel is available, and changing videos cancels the operation.
 
 For a browser-only local video, use **Open analysis JSON** to select the sidecar
-manually. No video, analysis or extracted pose data is uploaded. Import checks
+manually. Video and analysis files remain in the browser. FBX conversion sends
+only the rig and baked bone animation to your server; JSON export also stays
+entirely in the browser. Import checks
 filename, byte length, timing and schema; it does not rehash the video in the
 browser. Library sidecars additionally require matching source modification
 time, preventing use of stale analysis after a video changes.
@@ -133,8 +135,9 @@ mixer.clipAction(clip).play();
 // In the render loop: mixer.update(deltaSeconds).
 ```
 
-This exports an actual skeletal animation plus the source landmarks, not an FBX
-or GLB and not a video clip. There is no character mesh/texture in the download.
+The JSON option exports skeletal animation plus source landmarks. There is no
+character mesh or texture in the JSON download. Choose FBX to include the skinned
+character, original embedded textures and baked animation.
 Motion is in place, body-only, with no foot locking or finger tracking. Missing
 or low-confidence bones hold their last pose; initial gaps use rest pose.
 All-empty selections fail rather than downloading a static rest-pose clip.
@@ -147,6 +150,33 @@ The browser exporter caps a selection at 100,000 regular samples (about 55
 minutes at 30 FPS); larger selections report an error instead of exhausting
 browser memory. Loop playback is a preview setting and doesn't bake a repeated
 or blended animation into the exported clip.
+
+## FBX export
+
+The server uses installed Blender to load the original character, remove its
+source actions, and bake the selected browser solver's rotations into the imported
+bone axes. The output is a binary FBX with one animation, 65 bones, skin weights,
+mesh and embedded textures. It preserves the current solver, smoothing, leg
+tracking, visibility and person selections. It does not rerun pose inference.
+
+Set `BLENDER_BIN` if Blender is outside `/Applications/Blender.app` on macOS or
+outside PATH on other systems. The UI checks availability before extracting a
+clip. Only one conversion runs at a time; canceling stops Blender and deletes
+temporary files. Selections over ten minutes must use a shorter range or JSON.
+
+Keys begin at time zero (Blender's importer displays that as frame 1). For
+excerpts ending between 30 Hz samples, the exporter samples quaternion curves
+onto a uniform grid with fractional-frame keys at 30 FPS to preserve the exact
+duration. Beat/landmark metadata remains specific to the JSON format.
+
+An existing animation JSON can also be converted without the web UI:
+
+```sh
+/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup \
+  --python-exit-code 1 --python scripts/export_fbx.py -- \
+  --input dance.json --character 'amsterdam-hackathon/Geo/Chicken Dance.fbx' \
+  --output dance.fbx
+```
 
 ## Checks
 

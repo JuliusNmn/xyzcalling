@@ -1,0 +1,42 @@
+{
+  "frames": 144,
+  "bones": 65,
+  "action_range": [
+    1,
+    144
+  ],
+  "skinned_meshes": 1,
+  "max_export_error_m": 0.00008802206636733133,
+  "mean_export_error_m": 0.000004279753241986494,
+  "hip_aligned_mean_joint_error_m": 0.09384218232472902,
+  "hip_aligned_p95_joint_error_m": 0.23908208821530283,
+  "mean_limb_direction_error_degrees": 19.976451031921172,
+  "p95_limb_direction_error_degrees": 44.87233477136779,
+  "per_joint_mean_error_m": {
+    "Hips": 0,
+    "Spine": 0.012775034234165662,
+    "Spine1": 0.01649785213401898,
+    "Spine2": 0.025900529499246733,
+    "Head": 0.054300382360264625,
+    "LeftArm": 0.04925538086461224,
+    "LeftForeArm": 0.11385478181655384,
+    "LeftHand": 0.17686744766643284,
+    "RightArm": 0.04297677869044332,
+    "RightForeArm": 0.12458982456635577,
+    "RightHand": 0.1614688924779948,
+    "LeftUpLeg": 0.026386763618572954,
+    "LeftLeg": 0.1147320233094773,
+    "LeftFoot": 0.16004026726047824,
+    "LeftToeBase": 0.18977565256694232,
+    "RightUpLeg": 0.01859844540557662,
+    "RightLeg": 0.14051156392858521,
+    "RightFoot": 0.1658178370654943,
+    "RightToeBase": 0.18865200670463497
+  },
+  "generated_sha256": "8f800020cf531e2b4a8ee16c8e135a0531cb2d49a2c84cd2243de12d64b11c2f",
+  "method": "Actual MediaPipe full inference on rendered source; production TypeScript custom solver and JSON baker; FBX reimported independently in Blender. Hip alignment removes unsupported root travel. No temporal alignment or scale fitting.",
+  "fractional_endpoint_duration_seconds": 0.04699999491373698,
+  "source_sha256": "8ce0844554d0b4fd8353638214165cba69a4237a8fd3b305226157bccc59b421",
+  "source_unchanged": true,
+  "detected_frames": 144
+}

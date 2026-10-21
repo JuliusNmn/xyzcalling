@@ -12,7 +12,8 @@
     "service:install": "node scripts/service.mjs install",
     "service:stop": "node scripts/service.mjs stop",
     "service:status": "node scripts/service.mjs status",
-    "test": "node --import tsx --test tests/*.test.mjs"
+    "test": "node --import tsx --test tests/*.test.mjs",
+    "test:fbx": "node --import tsx scripts/validate-fbx.mjs"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "1.1.1",

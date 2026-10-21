@@ -38,10 +38,10 @@ export class AudioTimeline {
         <div class="wave-label"><span id="detail-label">SELECTION DETAIL · Beats / numbered bar starts</span><span id="selection-range"></span></div>
         <canvas id="wave-detail" class="wave-detail" role="img" aria-label="Selected phrase waveform and beat markers"></canvas>
         <p id="selection-info" class="audio-status"></p>
-        <div class="export-controls"><button id="export-dance" class="secondary-button primary-action">Extract & export animation JSON</button><button id="cancel-extraction" class="text-button" hidden>Cancel</button></div>
+        <div class="export-controls"><label>Export format <select id="animation-format"><option value="fbx">FBX · textured character</option><option value="json">JSON · animation & landmarks</option></select></label><button id="export-dance" class="secondary-button primary-action">Extract & export animation</button><button id="cancel-extraction" class="text-button" hidden>Cancel</button></div>
         <progress id="extraction-progress" max="1" value="0" hidden aria-label="Animation extraction progress"></progress>
         <p id="extraction-status" class="audio-status" role="status"></p>
-        <p class="audio-footnote">30 FPS · Mixamo body animation · In place · Uses the current character solver settings. Bar alignment is estimated; audition before exporting. Clips are not automatically seamless loops.</p>
+        <p class="audio-footnote">30 FPS · Mixamo body animation · In place · Uses the current character solver settings. FBX sends bone animation to your server for conversion; video stays in your browser. Bar alignment is estimated; audition before exporting. Clips are not automatically seamless loops.</p>
       </div>`;
     this.el('reload-analysis').addEventListener('click', () => void this.load());
     this.el('import-analysis').addEventListener('click', () => this.el<HTMLInputElement>('analysis-file').click());
@@ -237,20 +237,38 @@ export class AudioTimeline {
     if (!this.analysis || !this.selection || !this.source || this.extraction) return;
     const controller = this.extraction = new AbortController(), source = this.source, generation = this.generation;
     const analysis = this.analysis, selection = this.selection;
+    const format = this.el<HTMLSelectElement>('animation-format').value;
     this.video.pause(); this.auditioning = false; this.busy(true);
     this.host.querySelectorAll<HTMLButtonElement | HTMLInputElement | HTMLSelectElement>('button, input, select').forEach(el => { el.disabled = true; });
     this.el<HTMLButtonElement>('cancel-extraction').disabled = false; this.el('cancel-extraction').hidden = false;
     this.el('extraction-progress').hidden = false;
     this.el<HTMLProgressElement>('extraction-progress').value = 0;
     try {
+      if (format === 'fbx') {
+        if (selection.end - selection.start > 600) throw new Error('FBX export supports clips up to 10 minutes. Choose a shorter selection or export JSON.');
+        this.el('extraction-status').textContent = 'Checking FBX exporter…';
+        const check = await fetch('/api/export/fbx', { signal: controller.signal });
+        if (!check.ok) throw new Error((await check.json()).error || 'FBX exporter is unavailable.');
+      }
       const config = this.config() ?? { solver: 'custom' as const, settings: DEFAULT_SETTINGS.custom, person: 0, numPoses: 1, confidence: .5 };
       const { extractAnimation } = await import('./animation-export');
       const data = await extractAnimation({ url: source.url, analysis, selection, ...config, signal: controller.signal,
         progress: (fraction, message) => { if (generation === this.generation) { this.el<HTMLProgressElement>('extraction-progress').value = fraction; this.el('extraction-status').textContent = message; } },
       });
       controller.signal.throwIfAborted();
-      const url = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
-      const link = document.createElement('a'); link.href = url; link.download = `${source.name}.${selectionFileSuffix(selection)}.dance.json`; link.click();
+      let blob: Blob;
+      if (format === 'fbx') {
+        this.el('extraction-status').textContent = 'Baking textured FBX on your server…';
+        const response = await fetch('/api/export/fbx', { method: 'POST', signal: controller.signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ schema: data.schema, rig: data.rig, animation: data.animation }),
+        });
+        if (!response.ok) throw new Error((await response.json()).error || 'FBX conversion failed.');
+        blob = await response.blob();
+      } else blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+      controller.signal.throwIfAborted();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a'); link.href = url; link.download = `${source.name}.${selectionFileSuffix(selection)}.${format === 'fbx' ? 'fbx' : 'dance.json'}`; link.click();
       setTimeout(() => URL.revokeObjectURL(url), 10000);
       this.el('extraction-status').textContent = `Exported ${selectionLabel(selection).toLowerCase()} · ${data.quality.tracked_frames}/${data.quality.frames} frames tracked (${Math.round(data.quality.tracked_fraction * 100)}%). ${data.quality.held_frames} frames held the previous pose.`;
     } catch (error) {

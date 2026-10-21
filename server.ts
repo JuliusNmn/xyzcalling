@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { networkInterfaces } from 'node:os';
+import { fbxRoutes } from './fbx-export-server.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.basename(here) === 'dist-server' ? path.dirname(here) : here;
@@ -12,6 +13,7 @@ const videoDirectory = path.resolve(process.env.VIDEO_DIR || path.join(root, 'vi
 const extensions = new Set(['.mp4', '.webm', '.mov', '.m4v', '.ogv']);
 const app = express();
 app.disable('x-powered-by');
+app.use('/api/export/fbx', fbxRoutes(root));
 
 async function videoFiles() {
   return (await readdir(videoDirectory, { withFileTypes: true }))
