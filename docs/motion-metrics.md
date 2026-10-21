@@ -29,17 +29,17 @@ Click **Analyze selected loop** or **Analyze complete video**, then inspect all 
 | `left_arm_reach` | ratio | Shoulder-to-wrist distance divided by upper arm plus forearm length; 1 is fully extended. |
 | `right_arm_reach` | ratio | Shoulder-to-wrist distance divided by upper arm plus forearm length; 1 is fully extended. |
 
-The calculations use the extracted MediaPipe world landmarks, before character retargeting. Rotation smoothing and Track legs affect the character, not these signals. Wrist and ankle positions stand in for hands and feet. Coordinates are estimated meters relative to the hip midpoint: x right, y down, z away from the camera. Heights invert y. Speed subtracts the current hip midpoint from each joint before differentiating, so global translation cancels. These are movement signals, not measurements of travel through the room or foot contact.
+The calculations use the extracted MediaPipe world landmarks, before character retargeting. Live rotation smoothing and Track legs affect the character pose rather than the raw landmark measurements. Offline processing in Smoothed mode also applies the shared settings and timing map to signals. Wrist and ankle positions stand in for hands and feet. Coordinates are estimated meters relative to the hip midpoint: x right, y down, z away from the camera. Heights invert y. Speed subtracts the current hip midpoint from each joint before differentiating, so global translation cancels. These are movement signals, not measurements of travel through the room or foot contact.
 
-Body speed averages the valid members of 12 major joints and requires at least six; its support can vary as joints become visible. Body acceleration is only valid when that support stays the same across consecutive speeds. Each individual measurement requires all of its own input joints. Nonfinite positions, low visibility and degenerate angles are invalid. No gap filling, filtering or loop-seam blending is applied. Tracking jitter can be smoothed downstream in TouchDesigner.
+Body speed averages the valid members of 12 major joints and requires at least six; its support can vary as joints become visible. Body acceleration is only valid when that support stays the same across consecutive speeds. Each individual measurement requires all of its own input joints. Nonfinite positions, low visibility and degenerate angles are invalid. No gap filling or loop-seam blending is applied. Raw mode performs no additional filtering; Smoothed mode filters valid position segments before deriving metrics.
 
 ## Downloads and timing
 
-**Download .bclip** creates a binary clip entirely in the browser. It includes 20 metric channels, their 20 matching `_valid` flags, `clip_time` and `source_time`: 42 channels. **Include 33 joint positions** adds `joint_0_x` through `joint_32_z` and a validity channel per joint: 174 channels total. Optional joints keep original MediaPipe coordinates. The **channel guide** JSON records units, formulas, selected range, timing and visibility threshold.
+**Download .bclip** creates a binary clip entirely in the browser. It includes 20 metric channels, their 20 matching `_valid` flags, `clip_time` and `source_time`: 42 channels. **Include 33 joint positions** adds `joint_0_x` through `joint_32_z` and a validity channel per joint: 174 channels total. Optional joints keep the MediaPipe coordinate convention and use the selected raw or processed positions. The **channel guide** JSON records units, formulas, selected range, timing and visibility threshold.
 
 Missing values export as zero with validity 0. Validity is 1 only when the sample can be calculated. Speeds need two consecutive valid frames; acceleration needs three. Initial derivatives and derivatives across gaps are invalid rather than false movement spikes. There is no derivative across the end-to-start loop seam.
 
-CHOP samples use uniform 30 Hz timing beginning at clip time zero, covering the half-open range [selection.start, selection.end). The irregular closing key used by FBX animation is omitted. There are ceil(duration × 30) samples, so TouchDesigner playback duration rounds up by less than one sample (33.3 ms). Source time retains the selection offset. The guide preserves the exact requested boundaries.
+CHOP samples use uniform 30 Hz timing beginning at clip time zero, covering the half-open range [selection.start, selection.end). The irregular closing key used by FBX animation is omitted. There are ceil(duration × 30) samples, so TouchDesigner playback duration rounds up by less than one sample (33.3 ms). Source time retains the selection offset and follows the processing time map in Smoothed mode. The guide preserves the exact requested boundaries.
 
 On the server computer, use **http://127.0.0.1:3000** for downloads. The app listens on loopback alongside its private-network address; Chrome may block binary downloads from a plain-HTTP network origin. No browser security bypass is needed on loopback. Remote access should use trusted HTTPS for downloads.
 
@@ -52,3 +52,37 @@ The writer implements TouchDesigner's legacy `bcli` variant: big-endian float32 
 The regression fixture `tests/fixtures/touchdesigner-reference.bclip` was generated locally by TouchDesigner 2023.11760 on 2026-10-21 from two 30 Hz, four-sample channels: hand_distance = [0, 0.25, 1, -2], hand_distance_valid = [1, 1, 0, 1]. The writer reproduces all 252 bytes exactly. A separate 174-channel moving-pose file was imported into TouchDesigner, checking every name and sample, 30 samples at 30 Hz, and no import errors. Maximum absolute error was 0.00000746 from float32 quantization. Results are recorded in `docs/motion-validation-results.json`.
 
 Unit tests cover stationary and moving poses, velocity/acceleration units, hip translation invariance, geometric angles and heights, missing joints, confidence gaps, degenerate geometry, non-integral loop boundaries, optional joint channels and invalid binary input. Run `npm test` and `npm run build`.
+
+## Raw and smoothed signals
+
+**Signal data** switches between Raw landmarks and Smoothed (the default).
+Graphs, numeric values, optional joint channels and `.bclip` downloads all use the
+selected version; filenames include `.raw` or `.smoothed`. The channel guide
+(version 2) records the mode, processing settings and timing anchors.
+
+Smoothed mode uses a centered Gaussian average on valid landmark positions,
+then resamples those positions through the same time map as the extracted
+animation before calculating metrics. Speeds and acceleration therefore describe
+the processed motion, rather than being filtered independently afterward. Light,
+Balanced and Strong use 5, 7 and 11 samples at 30 Hz. Preserve fast accents reduces
+smoothing during fast position changes (a 1.5 m/s reference speed). Invalid joints
+remain invalid; smoothing and interpolation do not bridge tracking gaps.
+
+The controls in both panels share their settings. Motion timing and optional beat
+alignment match the animation for the same extraction range, solver and person.
+The position filter differs from the animation's quaternion filter: these signals
+describe processed MediaPipe landmarks, not the Mixamo character's bone positions.
+Different character proportions or retargeting constraints can still produce
+differences between them.
+
+Raw mode uses original landmarks and timestamps, ignoring smoothing, advance and
+beat alignment. Changing mode or settings reuses cached data without any new
+landmark detection. The two panels share their most recent offline extraction.
+Full-video motion analysis still works without an audio sidecar; its smoothing and
+manual timing controls remain available, while beat alignment is disabled.
+
+`clip_time` is output playback time, starting at zero. `source_time` is the
+corresponding original-video timestamp after retiming, including the selection
+start offset. Without retiming it equals `clip_time + selection.start`. Both modes
+retain the same 30 Hz output grid and sample count. Joint channels use the selected
+raw or processed positions with the usual validity flags.

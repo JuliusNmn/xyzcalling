@@ -98,8 +98,11 @@ function extractionBusy(busy: boolean) {
   extractingAnimation = busy; audioTimeline.setBusy(busy); motionPanel?.setBusy(busy);
 }
 const audioTimeline = new AudioTimeline(element('audio-timeline'), video, extractionBusy, extractionConfig,
-  () => motionPanel?.refreshSelection());
-motionPanel = new MotionPanel(element('motion-panel'), video, () => audioTimeline.getSelection(), extractionConfig, extractionBusy);
+  () => motionPanel?.refreshSelection(), () => motionPanel?.processingChanged());
+motionPanel = new MotionPanel(element('motion-panel'), video, () => audioTimeline.getSelection(), extractionConfig, extractionBusy, {
+  getSettings: () => audioTimeline.getProcessingSettings(), setSettings: options => audioTimeline.setProcessingSettings(options),
+  getAnalysis: () => audioTimeline.getAnalysis(),
+});
 
 function error(message: string) {
   element('error').textContent = message;

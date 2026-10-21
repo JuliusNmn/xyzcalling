@@ -136,6 +136,44 @@ repeating pose inference. Changing the video, selection or tracking/solver setti
 clears the preview and requires a new extraction. Preview speed only affects
 playback; downloads retain the original duration and contain one cycle.
 
+### Offline animation controls
+
+The extraction panel has **Off / Light / Balanced / Strong** smoothing,
+**Preserve fast accents**, a **Motion timing** adjustment (−250 to +250 ms;
+positive moves motion earlier), and optional **Align accents to beats**.
+Light smoothing and accent preservation are the defaults; timing and beat
+alignment start at zero. These options affect the extracted animation and its
+FBX/JSON downloads, not the live character viewer. The motion-signal panel can use the same settings in Smoothed mode, or retain the original data in Raw mode.
+
+Extraction uses independent MediaPipe image inference and disables the solver's
+recursive rotation smoothing. The raw animation and landmarks are kept in memory
+for the current selection. Adjusting any processing control reuses that extraction;
+it does not load the model or scan video frames again. Changing the source, range,
+solver, person or detection/visibility/leg settings requires a fresh extraction.
+Changing the live rotation-smoothing slider does not invalidate the offline cache.
+The shared cache keeps the most recent extraction until a different range/tracking configuration is extracted or the page reloads. Animation and motion-signal extraction reuse it when their range and tracking configuration match.
+
+Smoothing is a centered, hemisphere-correct quaternion average over 5, 7 or 11
+samples at 30 Hz. Accent preservation reduces smoothing during fast rotations.
+This removes the recursive filter's trailing response, but strong smoothing can
+still soften gestures and inference/occlusion errors can remain. Clip edges use
+available neighbors; the loop seam is not blended. Timing offsets hold the nearest
+pose at the ends rather than wrapping across the seam.
+
+Beat alignment detects peaks in whole-body angular speed and moves nearby peaks
+partway toward detected beats (up to 80 ms at full strength). All bones use one
+monotonic time map, with bounded speed changes and fixed endpoints before any
+manual timing offset. This is an optional creative adjustment, not a measurement
+of tracking latency. It can alter the dancer's original groove. No beat data means
+alignment is disabled. JSON includes the processing settings and timing anchors;
+its source landmarks and rhythm remain at their original timestamps.
+
+The extracted preview displays its own source-video player alongside the character.
+**Sync with source video** uses that video's clock for animation playback, including
+scrubbing, speed changes and looping. **Unsmoothed comparison** shows the cached raw
+animation; downloads always use the processed version. Turn sync off to play the
+animation on its own. None of these controls change the main live video preview.
+
 FBX includes the textured, skinned Mixamo
 character with the selected solver's animation; JSON includes quaternion animation,
 source landmarks, timing, solver settings and tracking-quality counts. Browser-only videos support

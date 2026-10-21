@@ -1,6 +1,7 @@
 import { parseAnalysis, selectBars, selectFullVideo, selectedBars, selectionLabel, selectionFileSuffix, type AudioAnalysis, type ClipSelection } from './audio-analysis';
 import { DEFAULT_SETTINGS, type SolverKind, type SolverSettings } from './rig/solvers';
 import type { AnimationPreview, DanceAnimation } from './animation-preview';
+import { processAnimation, type AnimationProcessing } from './animation-processing';
 
 export type AudioVideo = { name: string; bytes: number; url: string; analysisUrl?: string; browserOnly?: boolean };
 export class AudioTimeline {
@@ -12,7 +13,7 @@ export class AudioTimeline {
   private request?: AbortController;
   private extraction?: AbortController;
   private preview?: AnimationPreview;
-  private prepared?: { data: DanceAnimation; key: string; source: AudioVideo; selection: ClipSelection };
+  private prepared?: { raw: DanceAnimation; data: DanceAnimation; key: string; source: AudioVideo; selection: ClipSelection };
   private auditioning = false;
   private raf = 0;
   private lastDrawTime = -1;
@@ -26,7 +27,7 @@ export class AudioTimeline {
   };
   constructor(private host: HTMLElement, private video: HTMLVideoElement, private busy: (value: boolean) => void,
     private config: () => { solver: SolverKind; settings: SolverSettings; person: number; numPoses: number; confidence: number },
-    private selectionChanged: () => void = () => {}) {
+    private selectionChanged: () => void = () => {}, private processingChanged: () => void = () => {}) {
     host.innerHTML = `
       <div class="rhythm-heading"><div><span class="eyebrow">MUSIC & MOVEMENT</span><h2>Find your phrase.</h2></div><strong id="audio-tempo">— BPM</strong></div>
       <div class="analysis-actions"><button id="reload-analysis" class="text-button">Reload analysis</button><button id="import-analysis" class="text-button">Open analysis JSON</button><input id="analysis-file" type="file" accept=".json,application/json" hidden /></div>
@@ -43,13 +44,25 @@ export class AudioTimeline {
         <div class="wave-label"><span id="detail-label">SELECTION DETAIL · Beats / numbered bar starts</span><span id="selection-range"></span></div>
         <canvas id="wave-detail" class="wave-detail" role="img" aria-label="Selected phrase waveform and beat markers"></canvas>
         <p id="selection-info" class="audio-status"></p>
+        <fieldset class="animation-processing">
+          <legend>Extracted animation</legend>
+          <div class="processing-grid">
+            <label>Smoothing<select id="extract-smoothing"><option value="off">Off</option><option value="light" selected>Light · snappy</option><option value="balanced">Balanced</option><option value="strong">Strong</option></select></label>
+            <label class="processing-check"><input id="extract-accents" type="checkbox" checked /> Preserve fast accents</label>
+            <label>Motion timing <output id="extract-advance-value">0 ms</output><input id="extract-advance" aria-label="Motion timing in milliseconds" type="range" min="-250" max="250" step="10" value="0" /><small>Negative: later · Positive: earlier</small></label>
+            <label>Align accents to beats <output id="extract-beats-value">Off</output><input id="extract-beats" aria-label="Beat alignment strength" type="range" min="0" max="100" step="10" value="0" /><small>Optional; changes performance timing. At most 80 ms.</small></label>
+          </div>
+          <p class="audio-footnote">Adjust after extraction without scanning the video again. Smoothing uses surrounding frames; stronger settings can soften gestures. These controls apply to the downloaded animation.</p>
+          <p id="processing-status" class="audio-status" role="status"></p>
+        </fieldset>
         <div class="export-controls"><button id="preview-dance" class="secondary-button primary-action">Extract & preview animation</button><button id="cancel-extraction" class="text-button" hidden>Cancel</button></div>
         <progress id="extraction-progress" max="1" value="0" hidden aria-label="Animation extraction progress"></progress>
         <p id="extraction-status" class="audio-status" role="status"></p>
         <div id="animation-preview" class="animation-preview" hidden></div>
         <div class="export-controls"><label>Download format <select id="animation-format"><option value="fbx">FBX · textured character</option><option value="json">JSON · animation & landmarks</option></select></label><button id="export-dance" class="secondary-button" disabled>Download animation</button></div>
-        <p class="audio-footnote">30 FPS · Mixamo body animation · In place · Uses the current character solver settings. FBX sends bone animation to your server for conversion; video stays in your browser. Bar alignment is estimated; audition before exporting. Clips are not automatically seamless loops.</p>
+        <p class="audio-footnote">30 FPS · Mixamo body animation · In place · Uses the selected solver and visibility settings. Live rotation smoothing does not apply. FBX sends bone animation to your server for conversion; video stays in your browser. Bar alignment is estimated; audition before exporting. Clips are not automatically seamless loops.</p>
       </div>`;
+    for (const id of ['extract-smoothing', 'extract-accents', 'extract-advance', 'extract-beats']) this.el(id).addEventListener('input', () => this.reprocess());
     this.el('reload-analysis').addEventListener('click', () => void this.load());
     this.el('import-analysis').addEventListener('click', () => this.el<HTMLInputElement>('analysis-file').click());
     this.el('analysis-file').addEventListener('change', () => void this.importFile());
@@ -96,6 +109,15 @@ export class AudioTimeline {
   }
   private el<T extends HTMLElement = HTMLElement>(id: string) { return this.host.querySelector<T>(`#${id}`)!; }
   getSelection() { return this.selection; }
+  getAnalysis() { return this.analysis; }
+  getProcessingSettings() { return this.processingOptions(); }
+  setProcessingSettings(options: AnimationProcessing) {
+    this.el<HTMLSelectElement>('extract-smoothing').value = options.smoothing;
+    this.el<HTMLInputElement>('extract-accents').checked = options.preserveAccents;
+    this.el<HTMLInputElement>('extract-advance').value = String(options.advanceMs);
+    this.el<HTMLInputElement>('extract-beats').value = String(options.beatStrength * 100);
+    this.reprocess();
+  }
   setBusy(busy: boolean) { this.externalBusy = busy; this.choose(); }
   private message(text: string) { this.el('analysis-status').textContent = text; }
   async setSource(source?: AudioVideo) {
@@ -180,6 +202,7 @@ export class AudioTimeline {
         `Choose a starting bar with ${count} complete bars remaining, and a beat offset that keeps both ends inside the video.`;
       if (wasPlaying) this.video.pause();
     }
+    this.el<HTMLInputElement>('extract-beats').disabled = !!this.extraction || !this.analysis.beats_seconds.length;
     this.selectionChanged();
     this.playButton();
     this.draw();
@@ -250,11 +273,14 @@ export class AudioTimeline {
     if (playhead >= 0 && playhead <= width) { c.strokeStyle = '#af623b'; c.lineWidth = 2; c.beginPath(); c.moveTo(playhead, 0); c.lineTo(playhead, height); c.stroke(); }
   }
   private previewKey() {
-    return JSON.stringify([this.source?.url, this.generation, this.selection, this.config()]);
+    const config = this.config();
+    return JSON.stringify([this.source?.url, this.generation, this.selection, { ...config, settings: { ...config.settings, smoothing: 0 } }]);
   }
   private clearPreview() {
     this.preview?.dispose(); this.preview = undefined; this.prepared = undefined;
     this.el('animation-preview').hidden = true;
+    this.el('processing-status').textContent = '';
+    this.el('preview-dance').textContent = 'Extract & preview animation';
     this.el<HTMLButtonElement>('export-dance').disabled = true;
   }
   private checkPreview() {
@@ -279,6 +305,7 @@ export class AudioTimeline {
   }
   private async prepare() {
     if (!this.analysis || !this.selection || !this.source || this.extraction || this.externalBusy) return;
+    if (this.prepared?.key === this.previewKey()) { this.reprocess(); return; }
     const source = this.source, analysis = this.analysis, selection = this.selection, generation = this.generation;
     const config = this.config() ?? { solver: 'custom' as const, settings: DEFAULT_SETTINGS.custom, person: 0, numPoses: 1, confidence: .5 };
     const key = this.previewKey();
@@ -287,26 +314,47 @@ export class AudioTimeline {
     this.el('extraction-progress').hidden = false; this.el<HTMLProgressElement>('extraction-progress').value = 0;
     let preview: AnimationPreview | undefined;
     try {
-      const { extractAnimation } = await import('./animation-export');
-      const data = await extractAnimation({ url: source.url, analysis, selection, ...config, signal: controller.signal,
+      const { extractCachedAnimation } = await import('./animation-cache');
+      const raw = await extractCachedAnimation({ offline: true, url: source.url, analysis, selection, ...config, signal: controller.signal,
         progress: (fraction, message) => { if (generation === this.generation) { this.el<HTMLProgressElement>('extraction-progress').value = fraction; this.el('extraction-status').textContent = message; } },
       });
       controller.signal.throwIfAborted();
       if (key !== this.previewKey()) throw new Error('Selection or tracking settings changed. Extract a new preview.');
+      const data = { ...raw, ...processAnimation(raw.animation, this.processingOptions(), raw.rhythm?.beats_seconds) };
       this.el('extraction-status').textContent = 'Loading animation loop preview…';
       const { AnimationPreview } = await import('./animation-preview');
       controller.signal.throwIfAborted();
       this.el('animation-preview').hidden = false;
-      preview = this.preview = new AnimationPreview(this.el('animation-preview'));
-      await preview.load(data, controller.signal);
+      preview = this.preview = new AnimationPreview(this.el('animation-preview'), source.url);
+      await preview.load(data, controller.signal, raw.animation);
       controller.signal.throwIfAborted();
       if (key !== this.previewKey()) throw new Error('Selection or tracking settings changed. Extract a new preview.');
-      this.prepared = { data, key, source, selection };
+      this.prepared = { raw, data, key, source, selection };
+      this.reprocess();
       this.el('extraction-status').textContent = `Preview ready · ${data.quality.tracked_frames}/${data.quality.frames} frames tracked (${Math.round(data.quality.tracked_fraction * 100)}%). ${data.quality.held_frames} frames held the previous pose. Inspect the loop, then download.`;
     } catch (error) {
       if (this.preview === preview) this.clearPreview();
       if (generation === this.generation) this.el('extraction-status').textContent = controller.signal.aborted ? 'Extraction cancelled.' : `Preview failed: ${error instanceof Error ? error.message : String(error)}`;
     } finally { this.finishOperation(controller); }
+  }
+  private processingOptions(): AnimationProcessing {
+    return { smoothing: this.el<HTMLSelectElement>('extract-smoothing').value as AnimationProcessing['smoothing'],
+      preserveAccents: this.el<HTMLInputElement>('extract-accents').checked,
+      advanceMs: Number(this.el<HTMLInputElement>('extract-advance').value),
+      beatStrength: this.analysis?.beats_seconds.length ? Number(this.el<HTMLInputElement>('extract-beats').value) / 100 : 0 };
+  }
+  private reprocess() {
+    const options = this.processingOptions();
+    this.el('extract-advance-value').textContent = `${options.advanceMs > 0 ? '+' : ''}${options.advanceMs} ms`;
+    this.el('extract-beats-value').textContent = options.beatStrength ? `${Math.round(options.beatStrength * 100)}%` : 'Off';
+    this.processingChanged();
+    if (!this.prepared) return;
+    this.el('preview-dance').textContent = 'Update cached preview';
+    const { raw } = this.prepared;
+    const result = processAnimation(raw.animation, options, raw.rhythm?.beats_seconds);
+    this.prepared.data = { ...raw, ...result };
+    this.preview?.setAnimation(this.prepared.data, raw.animation);
+    this.el('processing-status').textContent = `Updated from cached extraction · ${result.processing.window_frames}-frame smoothing window · ${result.processing.aligned_accents} accents aligned to beats. Preview and download use these settings.`;
   }
   private async export() {
     this.checkPreview();
@@ -334,7 +382,7 @@ export class AudioTimeline {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a'); link.href = url; link.download = `${source.name}.${selectionFileSuffix(selection)}.${format === 'fbx' ? 'fbx' : 'dance.json'}`; link.click();
       setTimeout(() => URL.revokeObjectURL(url), 10000);
-      if (generation === this.generation) this.el('extraction-status').textContent = `Downloaded ${selectionLabel(selection).toLowerCase()} as ${format.toUpperCase()} · Same animation as the preview.`;
+      if (generation === this.generation) this.el('extraction-status').textContent = `Downloaded ${selectionLabel(selection).toLowerCase()} as ${format.toUpperCase()} · Processed animation with the selected smoothing and timing settings.`;
     } catch (error) {
       if (generation === this.generation) this.el('extraction-status').textContent = controller.signal.aborted
         ? (this.prepared ? 'Download cancelled. Your preview is still available.' : 'Download cancelled. Extract a new preview before downloading.')

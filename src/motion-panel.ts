@@ -1,14 +1,20 @@
 import type { AudioVideo } from './audio-timeline';
-import { selectionFileSuffix, selectFullVideo, type ClipSelection } from './audio-analysis';
+import { excerptRhythm, selectionFileSuffix, selectFullVideo, type AudioAnalysis, type ClipSelection } from './audio-analysis';
 import type { SolverKind, SolverSettings } from './rig/solvers';
-import { buildMotionMetrics, METRICS, motionExportChannels, type MotionMetrics } from './motion-metrics';
+import { buildMotionMetrics, METRICS, motionExportChannels, type MotionMetrics, type MotionFrame } from './motion-metrics';
 import { encodeBclip } from './bclip';
+import { processAnimation, type AnimationProcessing } from './animation-processing';
+import { processMotionFrames } from './motion-processing';
+import type { DanceAnimation } from './animation-preview';
 
 type Config = { solver: SolverKind; settings: SolverSettings; person: number; numPoses: number; confidence: number };
 export class MotionPanel {
   private source?: AudioVideo;
   private data?: MotionMetrics;
-  private extracted?: { selection: ClipSelection; source: AudioVideo; threshold: number };
+  private extracted?: { selection: ClipSelection; source: AudioVideo; threshold: number; raw: DanceAnimation };
+  private sourceTimes: number[] = [];
+  private processing?: ReturnType<typeof processAnimation>['processing'];
+  private lastProcessingKey = '';
   private request?: AbortController;
   private generation = 0;
   private busy = false;
@@ -18,7 +24,8 @@ export class MotionPanel {
   private metadata = () => this.refreshSelection();
   private cards: { canvas: HTMLCanvasElement; value: HTMLOutputElement; range: HTMLElement; low: number; high: number; count: number; background?: HTMLCanvasElement }[] = [];
   constructor(private host: HTMLElement, private video: HTMLVideoElement, private selection: () => ClipSelection | undefined,
-    private config: () => Config, private onBusy: (busy: boolean) => void) {
+    private config: () => Config, private onBusy: (busy: boolean) => void,
+    private processingControls: { getSettings: () => AnimationProcessing; setSettings: (settings: AnimationProcessing) => void; getAnalysis: () => AudioAnalysis | undefined }) {
     host.innerHTML = `
       <div class="rhythm-heading"><div><span class="eyebrow">MOTION SIGNALS</span><h2>Turn movement into controls.</h2></div><strong>20 metrics</strong></div>
       <p class="motion-intro">Drive particles with hand speed, spread light with reach, or turn a gesture into a trigger. Extract a range to inspect every signal.</p>
@@ -26,15 +33,33 @@ export class MotionPanel {
       <p class="audio-status" data-motion="selection-info">Select a video to begin.</p>
       <progress max="1" value="0" data-motion="progress" hidden aria-label="Motion analysis progress"></progress>
       <p class="audio-status" data-motion="status" role="status">Full-video analysis works without an audio sidecar. Select bars above for a loop.</p>
+      <fieldset class="animation-processing">
+        <legend>Signal processing</legend>
+        <div class="processing-grid">
+          <label>Signal data<select data-motion="mode"><option value="raw">Raw landmarks</option><option value="smoothed" selected>Smoothed · animation settings</option></select></label>
+          <label>Smoothing<select data-motion="smoothing"><option value="off">Off</option><option value="light" selected>Light · snappy</option><option value="balanced">Balanced</option><option value="strong">Strong</option></select></label>
+          <label class="processing-check"><input type="checkbox" data-motion="accents" checked /> Preserve fast accents</label>
+          <label>Motion timing <output data-motion="advance-value">0 ms</output><input data-motion="advance" aria-label="Signal motion timing in milliseconds" type="range" min="-250" max="250" step="10" value="0" /><small>Negative: later · Positive: earlier</small></label>
+          <label>Align accents to beats <output data-motion="beats-value">Off</output><input data-motion="beats" aria-label="Signal beat alignment strength" type="range" min="0" max="100" step="10" value="0" /><small>Requires audio analysis. At most 80 ms.</small></label>
+        </div>
+        <p class="audio-footnote">Smoothed signals share the animation’s smoothing and timing controls. Landmarks are smoothed before calculating speeds, distances and angles. Changes reuse the cached extraction. Raw mode keeps the original landmarks and timing.</p>
+        <p class="audio-status" data-motion="processing-status" role="status"></p>
+      </fieldset>
       <div data-motion="results" hidden>
         <div class="motion-export"><label><input type="checkbox" data-motion="joints" /> Include 33 joint positions</label><button class="secondary-button primary-action" data-motion="download">Download .bclip</button><button class="text-button" data-motion="guide">Download channel guide</button></div>
         <p class="audio-status" data-motion="range"></p>
         <label class="motion-scrubber">Inspect motion <output data-motion="time"></output><input data-motion="seek" aria-label="Inspect motion time" type="range" min="0" max="1" step="0.0333333333" value="0" /></label>
       </div>
       <div class="motion-grid">${METRICS.map(([id, label, unit, description]) => `<article class="motion-card"><div><h3>${label}</h3><output data-value="${id}">—</output></div><code>${id}</code><canvas data-chart="${id}" role="img" aria-label="${label} timeline in ${unit}" tabindex="0"></canvas><small data-range="${id}">${unit} · Awaiting analysis</small><p>${description}</p></article>`).join('')}</div>
-      <p class="motion-note">30 Hz · Estimated 3D distances in meters · Speeds are relative to the hips, not travel through the room. Hands use wrists; feet use ankles. Raw pose signals can contain tracking jitter. Gaps are shown as breaks and export as zero with a matching <code>_valid</code> channel. Initial speed and acceleration samples are unavailable.</p>
+      <p class="motion-note">30 Hz · Estimated 3D distances in meters · Speeds are relative to the hips, not travel through the room. Hands use wrists; feet use ankles. Raw pose signals can contain tracking jitter. Smoothed mode reduces position jitter before calculating metrics; gaps remain invalid. Gaps are shown as breaks and export as zero with a matching <code>_valid</code> channel. Initial speed and acceleration samples are unavailable.</p>
       <p class="motion-note">In TouchDesigner, open the .bclip with a <a href="https://docs.derivative.ca/File_In_CHOP" target="_blank" rel="noreferrer">File In CHOP</a> using names in the file. Select a metric, gate it with its validity channel, then remap its range with a Math CHOP. Every download contains the entire analyzed range.</p>`;
     this.cards = METRICS.map(([id]) => ({ canvas: host.querySelector(`[data-chart="${id}"]`)!, value: host.querySelector(`[data-value="${id}"]`)!, range: host.querySelector(`[data-range="${id}"]`)!, low: 0, high: 1, count: 0 }));
+    this.el('mode').addEventListener('change', () => this.processingChanged());
+    for (const control of ['smoothing', 'accents', 'advance', 'beats']) this.el(control).addEventListener('input', () => {
+      this.processingControls.setSettings({ smoothing: this.el<HTMLSelectElement>('smoothing').value as AnimationProcessing['smoothing'],
+        preserveAccents: this.el<HTMLInputElement>('accents').checked, advanceMs: Number(this.el<HTMLInputElement>('advance').value),
+        beatStrength: Number(this.el<HTMLInputElement>('beats').value) / 100 });
+    });
     this.el('selection').addEventListener('click', () => void this.analyze(this.selection()));
     this.el('full').addEventListener('click', () => void this.analyze(selectFullVideo(video.duration)));
     this.el('cancel').addEventListener('click', () => this.request?.abort());
@@ -60,7 +85,8 @@ export class MotionPanel {
   }
   private el<T extends HTMLElement = HTMLElement>(name: string) { return this.host.querySelector<T>(`[data-motion="${name}"]`)!; }
   setSource(source?: AudioVideo) {
-    this.generation++; this.request?.abort(); this.source = source; this.data = undefined; this.extracted = undefined;
+    this.generation++; this.request?.abort(); this.source = source; this.data = undefined; this.extracted = undefined; this.processing = undefined; this.sourceTimes = []; this.lastProcessingKey = '';
+    this.el('processing-status').textContent = '';
     this.el('results').hidden = true; this.el('status').textContent = 'Full-video analysis works without an audio sidecar. Select bars above for a loop.';
     this.cards.forEach((card, i) => { card.background = undefined; card.value.textContent = '—'; card.range.textContent = `${METRICS[i][2]} · Awaiting analysis`; });
     this.refreshSelection(); this.draw();
@@ -73,6 +99,8 @@ export class MotionPanel {
     this.el('selection-info').textContent = !this.source ? 'Select a video to begin.' : s?.kind === 'bars'
       ? `Selected loop: bars ${s.firstBar + 1}–${s.firstBar + s.count} · ${s.start.toFixed(2)}–${s.end.toFixed(2)}s${s.beatOffset ? ` · ${s.beatOffset > 0 ? '+' : ''}${s.beatOffset} beat offset` : ''}`
       : 'Choose a bar range above to analyze a loop, or analyze the complete video.';
+    this.processingChanged();
+    this.el<HTMLButtonElement>('download').disabled = this.busy; this.el<HTMLButtonElement>('guide').disabled = this.busy;
   }
   private async analyze(selection?: ClipSelection) {
     if (!this.source || !selection || this.busy) return;
@@ -81,32 +109,71 @@ export class MotionPanel {
     this.video.pause(); this.onBusy(true); this.el('cancel').hidden = false; this.el('progress').hidden = false;
     this.el<HTMLProgressElement>('progress').value = 0;
     try {
-      const { extractAnimation } = await import('./animation-export');
-      const animation = await extractAnimation({ url: source.url, source, selection, ...config, signal: request.signal,
+      const { extractCachedAnimation } = await import('./animation-cache');
+      const animation = await extractCachedAnimation({ url: source.url, source, analysis: this.processingControls.getAnalysis(), selection, ...config, signal: request.signal,
         progress: (fraction, message) => { if (generation === this.generation) { this.el<HTMLProgressElement>('progress').value = fraction; this.el('status').textContent = message; } },
       });
       request.signal.throwIfAborted();
       if (generation !== this.generation) return;
-      this.data = buildMotionMetrics(animation.frames, animation.duration_seconds, config.settings.minVisibility);
-      this.extracted = { source, selection: { ...selection }, threshold: config.settings.minVisibility };
-      this.cards.forEach((card, i) => {
-        card.background = undefined;
-        const channel = this.data!.channels[i]; let low = Infinity, high = -Infinity, count = 0;
-        channel.values.forEach((value, j) => { if (channel.valid[j]) { low = Math.min(low, value); high = Math.max(high, value); count++; } });
-        card.low = count ? Math.min(0, low) : 0; card.high = count ? Math.max(0, high) : 1; card.count = count;
-        if (card.high === card.low) card.high = card.low + 1;
-        card.range.textContent = count ? `${low.toFixed(2)}–${high.toFixed(2)} ${channel.unit} · ${Math.round(count / channel.values.length * 100)}% valid` : `${channel.unit} · No valid samples`;
-      });
-      this.el('results').hidden = false;
-      this.el<HTMLInputElement>('seek').max = String(this.data.times.at(-1));
-      this.el('range').textContent = `Analyzed ${selection.kind === 'full' ? 'complete video' : selectionFileSuffix(selection)} · ${selection.start.toFixed(2)}–${selection.end.toFixed(2)}s · Person ${config.person + 1} · ${this.data.times.length} samples at 30 Hz`;
-      this.el('status').textContent = '20 signals ready. Click a graph or scrub to inspect the matching video frame. Graphs use independent scales; values and exports keep their original units.';
+      this.extracted = { source, selection: { ...selection }, threshold: config.settings.minVisibility, raw: animation };
+      this.lastProcessingKey = '';
+      this.reprocess();
+      this.el('status').textContent = '20 signals ready. Click a graph or scrub to inspect the matching video frame. Graphs and downloads use the selected signal data.';
       this.seek(0);
     } catch (error) {
       if (generation === this.generation) this.el('status').textContent = request.signal.aborted ? 'Motion analysis cancelled.' : `Motion analysis failed: ${error instanceof Error ? error.message : String(error)}`;
     } finally {
       this.request = undefined; this.onBusy(false); this.el('cancel').hidden = true; this.el('progress').hidden = true;
     }
+  }
+  private smoothed() { return this.el<HTMLSelectElement>('mode').value === 'smoothed'; }
+  processingChanged() {
+    const settings = this.processingControls.getSettings();
+    this.el<HTMLSelectElement>('smoothing').value = settings.smoothing;
+    this.el<HTMLInputElement>('accents').checked = settings.preserveAccents;
+    this.el<HTMLInputElement>('advance').value = String(settings.advanceMs);
+    this.el<HTMLInputElement>('beats').value = String(settings.beatStrength * 100);
+    this.el('advance-value').textContent = `${settings.advanceMs > 0 ? '+' : ''}${settings.advanceMs} ms`;
+    this.el('beats-value').textContent = settings.beatStrength ? `${Math.round(settings.beatStrength * 100)}%` : 'Off';
+    this.el<HTMLSelectElement>('mode').disabled = this.busy;
+    for (const id of ['smoothing', 'accents', 'advance', 'beats']) this.el<HTMLInputElement>(id).disabled = this.busy || !this.smoothed();
+    this.el<HTMLInputElement>('beats').disabled ||= !this.processingControls.getAnalysis()?.beats_seconds.length;
+    if (!this.busy) this.reprocess();
+  }
+  private reprocess() {
+    if (!this.extracted) return;
+    const { raw, selection, source, threshold } = this.extracted;
+    const settings = this.processingControls.getSettings();
+    const analysis = this.processingControls.getAnalysis();
+    const beats = analysis?.source.name === source.name && analysis.source.bytes === source.bytes ? excerptRhythm(analysis, selection).beats_seconds : [];
+    const smoothed = this.smoothed(), key = JSON.stringify([smoothed, settings, beats]);
+    if (key === this.lastProcessingKey) return;
+    let frames: MotionFrame[] = raw.frames;
+    if (smoothed) {
+      this.processing = processAnimation(raw.animation, settings, beats).processing;
+      const result = processMotionFrames(raw.frames, raw.duration_seconds, threshold, settings, this.processing.timing_anchors);
+      frames = result.frames;
+      this.sourceTimes = result.sourceTimes;
+    } else {
+      this.processing = undefined; this.sourceTimes = raw.frames.map(f => f.time_seconds);
+    }
+    this.data = buildMotionMetrics(frames, raw.duration_seconds, threshold);
+    this.lastProcessingKey = key;
+    this.cards.forEach((card, i) => {
+      card.background = undefined;
+      const channel = this.data!.channels[i]; let low = Infinity, high = -Infinity, count = 0;
+      channel.values.forEach((value, j) => { if (channel.valid[j]) { low = Math.min(low, value); high = Math.max(high, value); count++; } });
+      card.low = count ? Math.min(0, low) : 0; card.high = count ? Math.max(0, high) : 1; card.count = count;
+      if (card.high === card.low) card.high = card.low + 1;
+      card.range.textContent = count ? `${low.toFixed(2)}–${high.toFixed(2)} ${channel.unit} · ${Math.round(count / channel.values.length * 100)}% valid` : `${channel.unit} · No valid samples`;
+    });
+    this.el('results').hidden = false;
+    this.el<HTMLInputElement>('seek').max = String(this.data.times.at(-1));
+    this.el('range').textContent = `${smoothed ? 'Smoothed' : 'Raw'} · ${selection.kind === 'full' ? 'complete video' : selectionFileSuffix(selection)} · ${selection.start.toFixed(2)}–${selection.end.toFixed(2)}s · Person ${raw.solver.person_index + 1} · ${this.data.times.length} samples at 30 Hz`;
+    this.el('processing-status').textContent = smoothed
+      ? `Updated from cached landmarks · ${this.processing!.window_frames}-frame smoothing · ${this.processing!.aligned_accents} accents aligned · Same timing map as animation for this range. Graphs, joints and .bclip use this version.`
+      : 'Raw cached landmarks and original timing. Graphs, joints and .bclip use this version.';
+    this.draw();
   }
   private seek(time: number) {
     if (!this.data || !this.extracted) return;
@@ -162,26 +229,26 @@ export class MotionPanel {
   private save(blob: Blob, extension: string) {
     if (!this.extracted) return;
     const url = URL.createObjectURL(blob), link = document.createElement('a');
-    link.href = url; link.download = `${this.extracted.source.name}.${selectionFileSuffix(this.extracted.selection)}.motion.${extension}`; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 10000);
+    link.href = url; link.download = `${this.extracted.source.name}.${selectionFileSuffix(this.extracted.selection)}.motion.${this.smoothed() ? 'smoothed' : 'raw'}.${extension}`; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 10000);
   }
   private download() {
     if (!this.data || !this.extracted) return;
     try {
       const channels = motionExportChannels(this.data, this.el<HTMLInputElement>('joints').checked, this.extracted.threshold);
-      channels.push({ name: 'source_time', values: this.data.times.map(t => t + this.extracted!.selection.start) });
+      channels.push({ name: 'source_time', values: this.data.times.map((_, i) => this.sourceTimes[i] + this.extracted!.selection.start) });
       this.save(new Blob([encodeBclip(channels, this.data.sampleRate)], { type: 'application/octet-stream' }), 'bclip');
-      this.el('status').textContent = `Download started: ${channels.length} named channels · ${this.data.times.length} samples · 30 Hz. The file covers the analyzed range shown below.`;
+      this.el('status').textContent = `Download started (${this.smoothed() ? 'smoothed' : 'raw'}): ${channels.length} named channels · ${this.data.times.length} samples · 30 Hz. The file covers the analyzed range shown below.`;
     } catch (error) { this.el('status').textContent = `Download failed: ${String(error)}`; }
   }
   private guide() {
     if (!this.data || !this.extracted) return;
-    const guide = { schema: 'pose-studio.motion-metrics', version: 1, source: this.extracted.source.name, selection: this.extracted.selection,
+    const guide = { schema: 'pose-studio.motion-metrics', version: 2, signal_data: this.smoothed() ? 'smoothed' : 'raw', processing: this.processing ? { ...this.processing, method: 'centered-landmark-average', note: 'Positions are smoothed before metrics and derivatives; timing anchors match the animation. These are MediaPipe landmarks, not Mixamo bone positions.' } : null, source: this.extracted.source.name, selection: this.extracted.selection,
       sample_rate_hz: this.data.sampleRate, samples: this.data.times.length, visibility_threshold: this.extracted.threshold,
-      coordinates: 'MediaPipe estimated meters relative to hip midpoint; x right, y down, z away from camera. Height metrics invert y. Not global locomotion. Raw landmarks; solver rotation smoothing does not affect metrics.',
+      coordinates: 'MediaPipe estimated meters relative to hip midpoint; x right, y down, z away from camera. Height metrics invert y. Not global locomotion. Uses the selected raw or smoothed landmark positions. Live solver rotation smoothing does not affect metrics.',
       missing_data: 'Zero with matching <metric>_valid = 0. Speeds require consecutive valid samples; acceleration requires three and a stable set of tracked body joints. No differentiation across the loop seam.',
       timing: 'Clip starts at sample 0. Samples are uniform in [start, end); the irregular closing animation key is excluded. Duration is quantized up to less than 1/30 second for bclip playback.',
       channels: this.data.channels.map(({ values: _values, valid: _valid, ...metadata }) => metadata),
-      extra_channels: 'Each metric has a _valid channel; clip_time and source_time are seconds. Optional joint_0_x through joint_32_z use the original MediaPipe coordinates, with joint_N_valid.',
+      extra_channels: 'Each metric has a _valid channel; clip_time is the output playback time in seconds. source_time is the corresponding original-video timestamp after timing adjustment (selection start + mapped clip time). Optional joint_0_x through joint_32_z use the selected raw or smoothed positions in MediaPipe coordinates, with joint_N_valid.',
       touchdesigner: 'File In CHOP > Use Names In File. Select CHOP to choose channels; Math CHOP to remap; optionally Filter CHOP to smooth. Gate each signal with its validity channel. Set playback/looping in TouchDesigner; no seam blending is applied.',
     };
     this.save(new Blob([JSON.stringify(guide, null, 2)], { type: 'application/json' }), 'channels.json');

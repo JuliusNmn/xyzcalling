@@ -28,6 +28,7 @@ function waitFor(video: HTMLVideoElement, event: string, signal: AbortSignal, ac
 export async function extractAnimation(options: {
   url: string; analysis?: AudioAnalysis; source?: { name: string; bytes: number }; selection: ClipSelection;
   solver: SolverKind; settings: SolverSettings; person: number; numPoses: number; confidence: number;
+  offline?: boolean;
   signal: AbortSignal; progress: (fraction: number, message: string) => void;
 }) {
   const { analysis, selection, signal, progress } = options;
@@ -59,7 +60,7 @@ export async function extractAnimation(options: {
     signal.throwIfAborted();
     model = await PoseLandmarker.createFromOptions(fileset, {
       baseOptions: { modelAssetPath: '/models/pose_landmarker_full.task', delegate: 'CPU' },
-      runningMode: 'VIDEO', numPoses: options.numPoses, minPoseDetectionConfidence: options.confidence,
+      runningMode: options.offline ? 'IMAGE' : 'VIDEO', numPoses: options.numPoses, minPoseDetectionConfidence: options.confidence,
       minPosePresenceConfidence: options.confidence, minTrackingConfidence: options.confidence,
     });
     canvas.width = Math.min(960, video.videoWidth); canvas.height = Math.round(canvas.width * video.videoHeight / video.videoWidth);
@@ -71,9 +72,9 @@ export async function extractAnimation(options: {
       const sourceTime = Math.min(selection.start + time, video.duration - .001);
       if (Math.abs(video.currentTime - sourceTime) > .00001) await waitFor(video, 'seeked', signal, () => { video.currentTime = sourceTime; });
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const result = model.detectForVideo(canvas, time * 1000);
+      const result = options.offline ? model.detect(canvas) : model.detectForVideo(canvas, time * 1000);
       const world = result.worldLandmarks[options.person], landmarks = result.landmarks[options.person];
-      const updated = retargeter.update(options.solver, world, landmarks, time, options.settings);
+      const updated = retargeter.update(options.solver, world, landmarks, time, options.offline ? { ...options.settings, smoothing: 0 } : options.settings);
       if (updated) tracked++;
       frames.push({ time_seconds: time, source_time_seconds: sourceTime, updated_bones: updated,
         landmarks: landmarks ?? null, world_landmarks: world ?? null });
@@ -87,9 +88,9 @@ export async function extractAnimation(options: {
       schema: 'pose-studio.dance-animation', version: 2,
       source: { ...(analysis?.source ?? options.source ?? { name: 'video', bytes: 0 }), ...selectionMetadata(selection) },
       duration_seconds: duration, sample_rate_hz: 30, timebase: 'clip-seconds',
-      solver: { name: options.solver, settings: options.settings, person_index: options.person },
+      solver: { name: options.solver, settings: options.offline ? { ...options.settings, smoothing: 0 } : options.settings, person_index: options.person },
       pose_model: { name: 'mediapipe-pose-landmarker-full', version: '1.1.1', max_width: 960,
-        confidence: options.confidence, num_poses: options.numPoses },
+        confidence: options.confidence, num_poses: options.numPoses, inference_mode: options.offline ? 'independent-images' : 'video' },
       quality: { frames: times.length, tracked_frames: tracked, held_frames: times.length - tracked,
         tracked_fraction: tracked / times.length, note: 'Missing or low-confidence bones hold their previous pose; initial gaps use rest pose. Person indices are detection order, not persistent identities.' },
       rig: { name: 'Chicken Dance Mixamo', space: 'Three.js Y-up, bone-local transforms',
