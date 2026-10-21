@@ -1,7 +1,7 @@
 import { FilesetResolver, PoseLandmarker, type PoseLandmarkerResult, type NormalizedLandmark } from '@mediapipe/tasks-vision';
 import './style.css';
 
-type VideoEntry = { name: string; title: string; url: string; bytes: number };
+type VideoEntry = { name: string; title: string; url: string; bytes: number; browserOnly?: boolean };
 const icon = (name: string) => {
   const paths: Record<string, string> = {
     pose: '<circle cx="12" cy="4" r="2"/><path d="m4 8 8 3 8-3M12 11v5m0 0-6 6m6-6 6 6"/>',
@@ -22,6 +22,9 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <div class="nav-active">${icon('pose')} Pose landmarker <span class="nav-dot"></span></div>
     <div class="library-heading"><h2>Video library</h2><button id="refresh" class="icon-button" title="Refresh video library" aria-label="Refresh video library">${icon('refresh')}</button></div>
     <p class="library-help">Your files. Ready to explore.</p>
+    <button id="open-local" class="secondary-button local-video-button">${icon('folder')} Open local video</button>
+    <input id="local-file" type="file" accept="video/*,.mp4,.webm,.mov,.m4v,.ogv" hidden />
+    <p class="local-video-note">Browser only · Never uploaded</p>
     <div id="library" class="library" aria-label="Video library"></div>
     <div class="folder-note">${icon('folder')}<div><strong>Add to your library</strong><p>Drop videos into <code>videos/</code>, then refresh the list.</p><small>MP4 · WebM · MOV · M4V · OGV</small></div></div>
     <div class="sidebar-footer"><span class="online-dot"></span> Private workspace <span>LOCAL</span></div>
@@ -47,7 +50,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <div class="control-section"><h3>OVERLAY</h3><label class="toggle-row"><span>Show landmarks</span><input id="show-points" type="checkbox" checked/><span class="switch"></span></label><label class="toggle-row"><span>Show skeleton</span><input id="show-lines" type="checkbox" checked/><span class="switch"></span></label><label class="toggle-row"><span>Landmark numbers</span><input id="show-labels" type="checkbox"/><span class="switch"></span></label><div class="range-label"><label for="visibility">Minimum visibility</label><output id="visibility-value">50%</output></div><input id="visibility" type="range" min="0" max="100" value="50" step="5"/></div>
         <div class="legend"><span><i class="left-color"></i> Left side</span><span><i class="right-color"></i> Right side</span><span><i class="center-color"></i> Center</span></div>
         <button id="export" class="secondary-button" disabled>${icon('download')} Export frame landmarks</button>
-        <p class="privacy-note">Processed in your browser.<br>Your video stays on your network.</p>
+        <p id="privacy-note" class="privacy-note">Processed in your browser.<br>Your video stays on your network.</p>
       </aside>
     </section>
     <footer><span>POSE STUDIO <span class="footer-divider">/</span> Powered by MediaPipe</span><span>33 landmarks. Endless possibilities.</span></footer>
@@ -61,6 +64,7 @@ const inputCanvas = document.createElement('canvas');
 const inputContext = inputCanvas.getContext('2d')!;
 let model: PoseLandmarker | undefined;
 let videos: VideoEntry[] = [];
+let browserVideo: VideoEntry | undefined;
 let selected: VideoEntry | undefined;
 let latest: PoseLandmarkerResult | undefined;
 let lastVideoTime = -1;
@@ -206,17 +210,18 @@ function infer(now: number) {
 function renderLibrary() {
   const library = element('library');
   library.replaceChildren();
-  if (!videos.length) {
-    library.innerHTML = '<p class="empty-library">No videos yet. Add a file to <code>videos/</code> and refresh.</p>';
+  const entries = browserVideo ? [browserVideo, ...videos] : videos;
+  if (!entries.length) {
+    library.innerHTML = '<p class="empty-library">Open a local video, or add a file to <code>videos/</code> and refresh.</p>';
   }
-  videos.forEach((entry, index) => {
+  entries.forEach((entry, index) => {
     const button = document.createElement('button');
-    button.className = `video-card ${entry.name === selected?.name ? 'selected' : ''}`;
-    button.setAttribute('aria-pressed', String(entry.name === selected?.name));
+    button.className = `video-card ${entry.url === selected?.url ? 'selected' : ''}`;
+    button.setAttribute('aria-pressed', String(entry.url === selected?.url));
     const number = document.createElement('span'); number.className = 'video-number'; number.textContent = String(index + 1).padStart(2, '0');
     const content = document.createElement('span'); content.className = 'video-card-content';
     const title = document.createElement('strong'); title.textContent = entry.title;
-    const details = document.createElement('small'); details.textContent = `${entry.name.split('.').pop()?.toUpperCase()} · ${(entry.bytes / 1024 / 1024).toFixed(0)} MB`;
+    const details = document.createElement('small'); details.textContent = `${entry.browserOnly ? 'BROWSER ONLY' : entry.name.split('.').pop()?.toUpperCase()} · ${(entry.bytes / 1024 / 1024).toFixed(0)} MB`;
     content.append(title, details); button.append(number, content);
     button.addEventListener('click', () => selectVideo(entry)); library.append(button);
   });
@@ -228,10 +233,29 @@ function selectVideo(entry: VideoEntry) {
   element('video-title').textContent = entry.title;
   element('empty-state').hidden = true;
   element('resolution').textContent = 'Loading…';
+  element('privacy-note').innerHTML = entry.browserOnly
+    ? 'Processed on this device.<br>Your local video is never uploaded.'
+    : 'Processed in your browser.<br>Your video stays on your network.';
   video.src = entry.url; video.load();
   renderLibrary();
   // A fresh graph avoids carrying tracking state from a previous video.
   if (model) void loadModel();
+}
+
+function openLocalVideo(file: File) {
+  if (!file.size) { error('This file is empty. Choose a video with content.'); return; }
+  if (!file.type.startsWith('video/') && !/\.(mp4|webm|mov|m4v|ogv|mkv|avi)$/i.test(file.name)) {
+    error('Choose a video file, such as an MP4 or WebM.'); return;
+  }
+  const previous = browserVideo;
+  // An object URL reads the File directly in this browser. Never send the file
+  // or its metadata to an API, form, or remote storage service.
+  browserVideo = {
+    name: file.name, title: file.name.replace(/\.[^.]+$/, ''), bytes: file.size,
+    url: URL.createObjectURL(file), browserOnly: true,
+  };
+  selectVideo(browserVideo);
+  if (previous) URL.revokeObjectURL(previous.url);
 }
 
 async function refreshLibrary() {
@@ -240,9 +264,9 @@ async function refreshLibrary() {
     const response = await fetch('/api/videos');
     if (!response.ok) throw new Error('The video directory could not be read.');
     videos = (await response.json()).videos;
-    const existing = videos.find(entry => entry.name === selected?.name);
-    if (!existing && videos.length) selectVideo(videos[0]);
-    else if (!videos.length) {
+    const existing = selected?.browserOnly || videos.some(entry => entry.url === selected?.url);
+    if (!existing && (browserVideo || videos.length)) selectVideo(browserVideo || videos[0]);
+    else if (!existing && !videos.length) {
       selected = undefined; video.pause(); video.removeAttribute('src'); video.load(); clearResults();
       element('empty-state').hidden = false; element('video-title').textContent = 'No video selected';
     }
@@ -252,6 +276,16 @@ async function refreshLibrary() {
 }
 
 element('refresh').addEventListener('click', () => void refreshLibrary());
+element('open-local').addEventListener('click', () => element<HTMLInputElement>('local-file').click());
+element('local-file').addEventListener('change', () => {
+  const input = element<HTMLInputElement>('local-file');
+  const file = input.files?.[0];
+  if (file) openLocalVideo(file);
+  input.value = ''; // Allow choosing the same file again; cancelling preserves playback.
+});
+window.addEventListener('pagehide', event => {
+  if (!event.persisted && browserVideo) URL.revokeObjectURL(browserVideo.url);
+});
 element('retry').addEventListener('click', () => void loadModel());
 element('speed').addEventListener('change', () => { video.playbackRate = Number(element<HTMLSelectElement>('speed').value); });
 video.addEventListener('loadedmetadata', () => {

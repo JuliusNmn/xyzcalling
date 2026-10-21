@@ -29,6 +29,13 @@ For development, run `npm run dev` to use Vite middleware with live reload.
 
 ## Video library
 
+Use **Open local video** to select a file from your device. Playback and pose
+analysis use a browser object URL; neither the file nor its metadata is uploaded
+to the backend. It appears as **BROWSER ONLY**, remains selectable alongside the
+server library, and disappears when the page reloads. Opening another local file
+replaces the previous local entry and releases its object URL. Refreshing the
+server library preserves the selected local video.
+
 Put files in `videos/`, then press the library's refresh button. Click any entry
 to load it, and press play in the video player. MP4, WebM, MOV, M4V, and OGV files
 are listed; codec support varies by browser. Use H.264 video and AAC audio in an
