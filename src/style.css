@@ -14,6 +14,7 @@
 @media(max-width:680px){.local-video-button{margin-top:14px}.local-video-note{margin-bottom:3px}}
 
 .view-switch{display:flex;align-items:center;gap:5px;margin-bottom:14px}
+.view-switch{flex-wrap:wrap}
 .view-switch button{border:1px solid transparent;background:transparent;color:#798870;border-radius:6px;padding:9px 14px;font-size:11px}
 .view-switch button[aria-pressed=true]{background:#e5ecd9;color:#36513b;border-color:#cbd8bc;font-weight:600}
 .view-switch>span{margin-left:auto;color:#91a184;font-size:10px}
@@ -37,3 +38,12 @@
 @media(max-width:1350px){.preview-grid.show-character{grid-template-columns:1fr}.character-canvas{height:420px}.view-switch>span{display:none}}
 @media(max-width:1000px){#character-controls{grid-column:1/-1}.preview-grid.show-character{grid-template-columns:1fr 1fr}.character-canvas{height:360px}}
 @media(max-width:680px){.preview-grid.show-character{grid-template-columns:1fr}.character-canvas{height:400px}.view-switch{margin-top:5px}}
+
+.preview-grid.compare-solvers{grid-template-columns:minmax(0,1fr)}
+.compare-solvers>.viewer-panel:not(.character-panel){width:min(100%,560px);justify-self:center}
+.comparison-labels{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;pointer-events:none;z-index:1}
+.comparison-labels>div{padding:15px 12px;display:flex;flex-direction:column;gap:6px;align-items:center}
+.comparison-labels>div+div{border-left:1px solid #aebda4}
+.comparison-labels strong{font-size:12px;color:#36513b;background:#f9fbf4e8;padding:5px 12px;border-radius:5px}
+.comparison-labels span{font-size:9px;color:#526749;background:#f9fbf4d9;padding:3px 6px;border-radius:3px;text-align:center;font-variant-numeric:tabular-nums}
+.comparing .character-loading{z-index:2}

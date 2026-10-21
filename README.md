@@ -61,6 +61,14 @@ Choose **Character + video** to load the textured Mixamo character from
 only the current video's MediaPipe results drive the preview. Drag to orbit,
 scroll to zoom, or use **Reset camera**. Character assets load on demand.
 
+Choose **Compare solvers** to see Custom and Kalidokit side by side, with the
+source video below. Both use the same detected person and video frame, with
+independent rigs and smoothing history. Orbit and zoom are linked for comparison.
+Use **Configure / export solver** to choose whose settings to edit (and whose
+motion to use for dance exports); both characters remain visible. Changing this
+selector in comparison mode preserves both solvers' motion history. The skeleton
+toggle, person selector and camera reset apply to both previews.
+
 The **Inverse kinematics** selector switches between:
 
 - **Custom · rest-aware**: browser port of `mocap/blender_retarget.py`. Fits the

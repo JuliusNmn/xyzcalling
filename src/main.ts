@@ -38,7 +38,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <div id="error" class="error-banner" role="alert" hidden></div>
     <section class="workspace">
       <div class="viewer-column">
-        <div class="view-switch" aria-label="Preview view"><button id="view-video" aria-pressed="true">Video</button><button id="view-character" aria-pressed="false">Character + video</button><span>Inspect the motion from every angle</span></div>
+        <div class="view-switch" aria-label="Preview view"><button id="view-video" aria-pressed="true">Video</button><button id="view-character" aria-pressed="false">Character + video</button><button id="view-compare" aria-pressed="false">Compare solvers</button><span>Inspect the motion from every angle</span></div>
         <div id="preview-grid" class="preview-grid">
         <div class="viewer-panel">
           <div class="viewer-toolbar"><div><span class="live-dot"></span><strong>Video preview</strong><span id="resolution" class="muted">—</span></div><span id="overlay-state">LANDMARK OVERLAY</span></div>
@@ -85,7 +85,7 @@ let initializing: Promise<void> | undefined;
 let configTimer: ReturnType<typeof setTimeout>;
 let characterView: CharacterView | undefined;
 let characterLoading = false;
-let showCharacter = false;
+let previewMode: 'video' | 'character' | 'compare' = 'video';
 let extractingAnimation = false;
 const audioTimeline = new AudioTimeline(element('audio-timeline'), video, busy => {
   extractingAnimation = busy;
@@ -310,13 +310,16 @@ window.addEventListener('pagehide', event => {
   if (!event.persisted) characterView?.dispose();
   if (!event.persisted) audioTimeline.dispose();
 });
-async function setView(character: boolean) {
-  showCharacter = character;
+async function setView(mode: typeof previewMode) {
+  previewMode = mode;
+  const character = mode !== 'video';
+  element('preview-grid').classList.toggle('compare-solvers', mode === 'compare');
   element('preview-grid').classList.toggle('show-character', character);
   element('character-preview').hidden = !character;
   element('character-controls').hidden = !character;
   element('view-video').setAttribute('aria-pressed', String(!character));
-  element('view-character').setAttribute('aria-pressed', String(character));
+  element('view-character').setAttribute('aria-pressed', String(mode === 'character'));
+  element('view-compare').setAttribute('aria-pressed', String(mode === 'compare'));
   if (character && !characterView && !characterLoading) {
     characterLoading = true;
     element('character-preview').textContent = 'Preparing 3D view…';
@@ -328,10 +331,12 @@ async function setView(character: boolean) {
       element('character-preview').textContent = `3D view unavailable: ${String(reason)}. Switch to Video and try again.`;
     } finally { characterLoading = false; }
   }
-  characterView?.setVisible(showCharacter);
+  characterView?.setComparison(previewMode === 'compare');
+  characterView?.setVisible(previewMode !== 'video');
 }
-element('view-video').addEventListener('click', () => void setView(false));
-element('view-character').addEventListener('click', () => void setView(true));
+element('view-video').addEventListener('click', () => void setView('video'));
+element('view-character').addEventListener('click', () => void setView('character'));
+element('view-compare').addEventListener('click', () => void setView('compare'));
 element('retry').addEventListener('click', () => void loadModel());
 element('speed').addEventListener('change', () => { video.playbackRate = Number(element<HTMLSelectElement>('speed').value); });
 video.addEventListener('loadedmetadata', () => {

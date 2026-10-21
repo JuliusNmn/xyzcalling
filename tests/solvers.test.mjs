@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { AnimationMixer, LoadingManager, Texture, Vector3 } from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { MixamoRig, PoseRetargeter, LIMBS, CONTROLLED, canonicalPose, canonicalImage, cameraPoint, smoothingAlpha } from '../src/rig/solvers.ts';
 
 const bytes = readFileSync(new URL('../amsterdam-hackathon/Geo/Chicken Dance.fbx', import.meta.url));
@@ -28,6 +29,33 @@ function raisedArm() {
   }
   return points;
 }
+
+test('comparison characters have independent skinning, poses and smoothing history', () => {
+  const character = loadCharacter(), copy = clone(character);
+  const customRig = new MixamoRig(character), kalidoRig = new MixamoRig(copy);
+  const custom = new PoseRetargeter(customRig), kalido = new PoseRetargeter(kalidoRig);
+  const sourceSkins = [], cloneSkins = [];
+  character.traverse(object => { if (object.isSkinnedMesh) sourceSkins.push(object); });
+  copy.traverse(object => { if (object.isSkinnedMesh) cloneSkins.push(object); });
+  assert(sourceSkins.length > 0);
+  for (const [index, mesh] of sourceSkins.entries()) {
+    assert.notEqual(mesh.skeleton, cloneSkins[index].skeleton);
+    mesh.skeleton.bones.forEach((bone, i) => assert.notEqual(bone, cloneSkins[index].skeleton.bones[i]));
+  }
+  const neutral = canonicalPose(), raised = raisedArm();
+  custom.update('custom', neutral, canonicalImage(neutral), 0, unfiltered);
+  kalido.update('kalidokit', neutral, canonicalImage(neutral), 0, { ...unfiltered, smoothing: .9 });
+  const before = snapshot(kalidoRig);
+  assert.equal(custom.update('custom', raised, canonicalImage(raised), 1 / 30, unfiltered), 14);
+  assert.deepEqual(snapshot(kalidoRig), before);
+  const customPose = snapshot(customRig);
+  // Kalidokit can leave a straight elbow undefined; valid rotations must still update.
+  assert(kalido.update('kalidokit', raised, canonicalImage(raised), 1 / 30, { ...unfiltered, smoothing: .9 }) > 0);
+  assert.notDeepEqual(snapshot(kalidoRig), before);
+  assert.deepEqual(snapshot(customRig), customPose);
+  kalido.reset();
+  assert.deepEqual(snapshot(customRig), customPose);
+});
 
 test('custom solver matches known FBX limb directions across its original dance', () => {
   const source = loadCharacter(), target = makeRig(), sourceRig = new MixamoRig(source);
