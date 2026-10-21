@@ -1,3 +1,5 @@
+import { characterOptions, characterDefinition, DEFAULT_CHARACTER, type CharacterId } from './characters';
+import { disposeRecordedCharacter } from './recorded-animation';
 import {
   Box3, Color, DirectionalLight, GridHelper, Group, HemisphereLight, LoadingManager,
   Mesh, MeshStandardMaterial, PerspectiveCamera, PlaneGeometry, Scene, SkeletonHelper,
@@ -28,14 +30,17 @@ export class CharacterView {
   private active = true;
   private person = 0;
   private disposed = false;
+  private loadGeneration = 0;
 
-  constructor(private readonly host: HTMLElement, private readonly panel: HTMLElement) {
+  constructor(private readonly host: HTMLElement, private readonly panel: HTMLElement,
+    private characterId: CharacterId = DEFAULT_CHARACTER, private characterChanged?: (id: CharacterId) => void) {
     host.innerHTML = `
       <div class="viewer-toolbar"><div><span class="live-dot"></span><strong id="character-heading">Character preview</strong></div><button class="text-button" id="recenter-character">Reset camera</button></div>
       <div class="character-canvas"><div class="character-loading" role="status">Loading character…</div><div class="comparison-labels" hidden><div><strong>Custom</strong><span id="custom-state">Loading character…</span></div><div><strong>Kalidokit</strong><span id="kalidokit-state">Loading character…</span></div></div></div>
-      <div class="character-caption"><strong>Chicken Dance · Mixamo</strong><span id="rig-info">Parsing FBX skeleton</span><span id="rig-state" role="status">Waiting for character</span></div>`;
+      <div class="character-caption"><strong id="character-name">${characterDefinition(this.characterId).name}</strong><span id="rig-info">Parsing FBX skeleton</span><span id="rig-state" role="status">Waiting for character</span></div>`;
     panel.innerHTML = `
       <h3>CHARACTER SOLVER</h3>
+      <label class="field-label" for="live-character">Character model</label><select id="live-character">${characterOptions()}</select>
       <label id="ik-solver-label" class="field-label" for="ik-solver">Inverse kinematics</label>
       <select id="ik-solver"><option value="custom">Custom · rest-aware</option><option value="kalidokit">Kalidokit · 1.1.5</option></select>
       <p id="solver-description" class="control-help"></p>
@@ -105,6 +110,11 @@ export class CharacterView {
       this.settings[this.kind] = { ...DEFAULT_SETTINGS[this.kind] }; this.syncControls();
       this.rigs.get(this.kind)?.retargeter.reset(); this.solve(this.kind);
     });
+    this.input<HTMLSelectElement>('live-character').value = this.characterId;
+    this.input('live-character').addEventListener('change', () => {
+      const id = this.input<HTMLSelectElement>('live-character').value as CharacterId;
+      if (this.characterChanged) this.characterChanged(id); else this.setCharacter(id);
+    });
     this.syncControls();
     void this.load();
   }
@@ -123,8 +133,37 @@ export class CharacterView {
       : 'Neutral-calibrated Kalidokit rotations, adapted to the Mixamo rig. Feet follow the legs.';
   }
 
+  setCharacter(id: CharacterId) {
+    characterDefinition(id);
+    this.input<HTMLSelectElement>('live-character').value = id;
+    if (id === this.characterId) return;
+    this.characterId = id;
+    void this.load();
+  }
+  private clearRigs() {
+    // Clones share geometry/materials; release those resources only once.
+    const seen = new Set<object>();
+    const once = (resource: { dispose(): void }) => { if (!seen.has(resource)) { seen.add(resource); resource.dispose(); } };
+    for (const rig of this.rigs.values()) {
+      rig.skeleton.dispose(); this.scene.remove(rig.skeleton, rig.character);
+      rig.character.traverse(object => {
+        const mesh = object as SkinnedMesh;
+        if (mesh.skeleton) once(mesh.skeleton);
+        if (mesh.geometry) once(mesh.geometry);
+        if (mesh.material) for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+          for (const value of Object.values(material)) if (value && typeof value === 'object' && 'isTexture' in value) once(value);
+          once(material);
+        }
+      });
+    }
+    this.rigs.clear();
+  }
   private async load() {
+    const generation = ++this.loadGeneration;
+    this.clearRigs();
     const message = this.host.querySelector<HTMLElement>('.character-loading')!;
+    message.hidden = false; message.textContent = 'Loading character…';
+    this.host.querySelector('#character-name')!.textContent = characterDefinition(this.characterId).name;
     try {
       const manager = new LoadingManager();
       // Texture names inside FBX can be Windows paths. Keep all requests on this server.
@@ -134,10 +173,10 @@ export class CharacterView {
         return `/character/Chicken%20Dance.fbm/${encodeURIComponent(name || '')}`;
       });
       manager.onError = () => { message.textContent = 'Some character textures could not load.'; };
-      const character = await new FBXLoader(manager).loadAsync('/character/Chicken%20Dance.fbx', progress => {
-        if (progress.total) message.textContent = `Loading character… ${Math.round(progress.loaded / progress.total * 100)}%`;
+      const character = await new FBXLoader(manager).loadAsync(characterDefinition(this.characterId).url, progress => {
+        if (generation === this.loadGeneration && progress.total) message.textContent = `Loading character… ${Math.round(progress.loaded / progress.total * 100)}%`;
       });
-      if (this.disposed) return;
+      if (this.disposed || generation !== this.loadGeneration) { disposeRecordedCharacter(character); return; }
       // No AnimationMixer: the FBX's bundled dance must never drive this preview.
       character.animations = [];
       character.updateMatrixWorld(true);
@@ -168,6 +207,8 @@ export class CharacterView {
       message.hidden = true;
       this.solve(); this.resizeViewport();
     } catch (reason) {
+      if (this.disposed || generation !== this.loadGeneration) return;
+      this.clearRigs();
       message.textContent = `Character could not load: ${reason instanceof Error ? reason.message : String(reason)}`;
       this.host.querySelector('#rig-state')!.textContent = 'Character unavailable';
       const retry = document.createElement('button'); retry.className = 'secondary-button'; retry.textContent = 'Retry character';

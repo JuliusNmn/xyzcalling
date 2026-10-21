@@ -5,8 +5,8 @@ import { validateFbxPayload, fbxRoutes } from '../fbx-export-server.ts';
 
 function fixture() {
   return { schema: 'pose-studio.dance-animation', rig: {
-    root_transform: { quaternion: [0, 0, 0, 1] },
-    bones: Array.from({ length: 65 }, (_, i) => ({ name: `mixamorigBone${i}`, parent: i ? `mixamorigBone${i - 1}` : null, quaternion: [0, 0, 0, 1] })),
+    root_transform: { quaternion: [0, 0, 0, 1], position: [0, 0, 0], scale: [1, 1, 1] },
+    bones: Array.from({ length: 65 }, (_, i) => ({ name: `mixamorigBone${i}`, parent: i ? `mixamorigBone${i - 1}` : null, quaternion: [0, 0, 0, 1], position: [0, 0, 0], scale: [1, 1, 1] })),
   }, animation: { duration: 1, tracks: [{ name: 'mixamorigBone0.quaternion', type: 'quaternion', times: [0, 1], values: [0, 0, 0, 1, 0, 0, 0, 1] }] } };
 }
 
@@ -37,4 +37,15 @@ test('FBX endpoint returns actionable validation errors', async () => {
     assert.equal(response.status, 422);
     assert.match((await response.json()).error, /Invalid FBX/);
   } finally { await new Promise(resolve => server.close(resolve)); }
+});
+
+test('FBX accepts root travel but rejects unsupported animated bone lengths or scale', () => {
+  const data = fixture();
+  const position = { name: 'mixamorigBone0.position', type: 'vector', times: [0, 1], values: [0, 0, 0, 100, 50, -20] };
+  data.animation.tracks.push(position);
+  validateFbxPayload(data);
+  position.name = 'mixamorigBone1.position';
+  assert.throws(() => validateFbxPayload(data), /Invalid FBX/);
+  position.name = 'mixamorigBone0.scale';
+  assert.throws(() => validateFbxPayload(data), /Invalid FBX/);
 });

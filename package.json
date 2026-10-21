@@ -8,6 +8,7 @@
     "build": "tsc --noEmit && vite build && tsc -p tsconfig.server.json",
     "start": "node dist-server/server.js",
     "setup": "node scripts/setup.mjs",
+    "import:gvhmr": "node scripts/import-gvhmr.mjs",
     "analyze:audio": "uv run --python 3.12 analyze_audio.py",
     "service:install": "node scripts/service.mjs install",
     "service:stop": "node scripts/service.mjs stop",

@@ -1,0 +1,13 @@
+{
+  "file": "Poppin John ｜ FrontRow ｜ World of Dance 2017 ｜ #WODATL17 [BkfDjRwBaaQ].mp4",
+  "fbx_file": "Poppin John - FrontRow - World of Dance 2017 - #WODATL17.gvhmr.fbx",
+  "duration": 251.9267120361328,
+  "video_duration": 252.099048,
+  "sha256": "e179e8378fef9a5f193e6991183b9b6f2164d758330ec5cf5979ae4acffe83d2",
+  "bytes": 74672558,
+  "imported_at": "2026-10-21T17:21:53.149Z",
+  "origin": "imported-fbx",
+  "matching": "Unique normalized title and full animation duration (within 250 ms).",
+  "held_black_outro_frames": null,
+  "note": "Imported FBX only. Original inference metadata and per-frame confidence were not supplied."
+}

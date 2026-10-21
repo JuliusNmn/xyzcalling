@@ -1,4 +1,4 @@
-import { AnimationClip, Quaternion, QuaternionKeyframeTrack, QuaternionLinearInterpolant } from 'three';
+import { AnimationClip, Quaternion, QuaternionKeyframeTrack, LinearInterpolant, VectorKeyframeTrack, QuaternionLinearInterpolant } from 'three';
 
 export type AnimationProcessing = {
   smoothing: 'off' | 'light' | 'balanced' | 'strong';
@@ -87,28 +87,51 @@ export function processAnimation(animation: ReturnType<typeof AnimationClip.toJS
   const settings = processingSettings(options), clip = AnimationClip.parse(animation);
   const radius = { off: 0, light: 2, balanced: 3, strong: 5 }[settings.smoothing];
   const first = clip.tracks[0];
-  if (!first || !clip.tracks.every(track => track instanceof QuaternionKeyframeTrack && track.times.length === first.times.length && track.times.every((t, i) => t === first.times[i]))) {
-    throw new Error('Motion processing requires matching quaternion tracks.');
+  if (!first || !clip.tracks.every(track => (track instanceof QuaternionKeyframeTrack || track instanceof VectorKeyframeTrack) && track.times.length === first.times.length && track.times.every((t, i) => t === first.times[i]))) {
+    throw new Error('Motion processing requires matching rotation or vector tracks.');
   }
   const times = first.times, energy = Array.from(times, () => 0);
   // Use angular motion, not noisy acceleration; all tracks share the same warp.
+  const rotationCount = clip.tracks.filter(track => track instanceof QuaternionKeyframeTrack).length || 1;
   const filtered = clip.tracks.map(track => {
+    if (track instanceof VectorKeyframeTrack) {
+      const values = Array.from(track.values);
+      // Keep scale fixed and smooth translations symmetrically in their own units.
+      if (radius && track.name.endsWith('.position')) for (let i = 0; i < times.length; i++) {
+        let speed = 0;
+        for (const j of [i - 1, i + 1]) if (j >= 0 && j < times.length) {
+          speed = Math.max(speed, Math.hypot(...[0, 1, 2].map(k => track.values[i * 3 + k] - track.values[j * 3 + k])) / Math.max(.001, Math.abs(times[i] - times[j])));
+        }
+        // Imported Mixamo translations are centimeters; 200 cm/s is a fast accent.
+        const blend = settings.preserveAccents ? 1 / (1 + (speed / 200) ** 2) : 1;
+        for (let k = 0; k < 3; k++) {
+          let total = 0, weight = 0;
+          for (let j = Math.max(0, i - radius); j <= Math.min(times.length - 1, i + radius); j++) {
+            const w = Math.exp(-.5 * ((times[j] - times[i]) / (radius / 60)) ** 2);
+            total += track.values[j * 3 + k] * w; weight += w;
+          }
+          values[i * 3 + k] += (total / weight - values[i * 3 + k]) * blend;
+        }
+      }
+      return new VectorKeyframeTrack(track.name, times, values);
+    }
     const values = smoothRotations(track.times, track.values, radius, settings.preserveAccents);
     for (let i = 1; i < times.length - 1; i++) {
       const before = new Quaternion().fromArray(values, (i - 1) * 4), after = new Quaternion().fromArray(values, (i + 1) * 4);
-      energy[i] += before.angleTo(after) / Math.max(.001, times[i + 1] - times[i - 1]) / clip.tracks.length;
+      energy[i] += before.angleTo(after) / Math.max(.001, times[i + 1] - times[i - 1]) / rotationCount;
     }
     return new QuaternionKeyframeTrack(track.name, track.times, values);
   });
   const anchors = beatAnchors(times, energy, beats, clip.duration, settings.beatStrength);
   const tracks = filtered.map(track => {
-    const interpolant = new QuaternionLinearInterpolant(track.times, track.values, 4);
+    const rotation = track instanceof QuaternionKeyframeTrack;
+    const interpolant = rotation ? new QuaternionLinearInterpolant(track.times, track.values, 4) : new LinearInterpolant(track.times, track.values, 3);
     const values: number[] = [];
     for (const time of times) values.push(...interpolant.evaluate(mappedTime(time, anchors, settings.advanceMs, clip.duration)));
-    return new QuaternionKeyframeTrack(track.name, times, values);
+    return rotation ? new QuaternionKeyframeTrack(track.name, times, values) : new VectorKeyframeTrack(track.name, times, values);
   });
   return { animation: AnimationClip.toJSON(new AnimationClip(clip.name, clip.duration, tracks)),
-    processing: { ...settings, method: 'centered-quaternion-average', window_frames: radius * 2 + 1,
+    processing: { ...settings, method: clip.tracks.some(track => track instanceof VectorKeyframeTrack) ? 'centered-quaternion-and-position-average' : 'centered-quaternion-average', window_frames: radius * 2 + 1,
       aligned_accents: anchors.length - 2, max_beat_shift_ms: 80 * settings.beatStrength, timing_anchors: anchors,
       note: 'Applied to bone animation only. Source landmarks and rhythm timestamps remain unchanged. Positive advance moves motion earlier; edges hold the nearest pose. Beat alignment is heuristic and changes performance timing.' } };
 }

@@ -1,4 +1,4 @@
-"""Bake Pose Studio's Three.js animation onto the original textured Mixamo FBX.
+"""Bake Pose Studio's Three.js animation onto the selected Mixamo-compatible FBX.
 
 Run with Blender --background --python-exit-code 1 --python scripts/export_fbx.py
 -- --input dance.json --character '.../Chicken Dance.fbx' --output dance.fbx.
@@ -38,7 +38,10 @@ def bake(data, character):
     bpy.context.view_layer.update()
     bones = {short(b.name): b for b in rig.pose.bones}
     skeleton = data['rig']['bones']
-    tracks = {t['name'].removesuffix('.quaternion'): t for t in data['animation']['tracks']}
+    tracks = {t['name'].removesuffix('.quaternion'): t for t in data['animation']['tracks'] if t['name'].endswith('.quaternion')}
+    positions = {t['name'].removesuffix('.position'): t for t in data['animation']['tracks'] if t['name'].endswith('.position')}
+    root_transform = data['rig']['root_transform']
+    root_matrix = Matrix.LocRotScale(Vector(root_transform['position']), quaternion(root_transform['quaternion']), Vector(root_transform['scale']))
     root_q = quaternion(data['rig']['root_transform']['quaternion'])
     # Three Y-up -> Blender Z-up; both use meters in world space.
     conversion = Quaternion((1, 0, 0), math.pi / 2)
@@ -47,6 +50,7 @@ def bake(data, character):
         parent = rest[entry['parent']] if entry['parent'] else root_q
         rest[entry['name']] = parent @ quaternion(entry['quaternion'])
     blender_rest = {name: (rig.matrix_world @ b.matrix).to_quaternion() for name, b in bones.items()}
+    blender_rest_positions = {name: (rig.matrix_world @ b.matrix).translation.copy() for name, b in bones.items()}
     controlled = [entry for entry in skeleton if entry['name'] in tracks]
     duration = data['animation']['duration']
     steps = max(1, math.ceil(duration * 30 - 1e-5))
@@ -81,6 +85,17 @@ def bake(data, character):
             transform = rig.matrix_world @ bone.matrix
             bone.matrix = rig.matrix_world.inverted() @ Matrix.LocRotScale(transform.translation, rotation, transform.to_scale())
             bone.location = (0, 0, 0)
+            if entry['parent'] is None and name in positions:
+                track = positions[name]
+                times, values = track['times'], track['values']
+                left = max(0, min(len(times) - 2, bisect.bisect_right(times, time) - 1))
+                weight = min(1, max(0, (time - times[left]) / (times[left + 1] - times[left])))
+                local_position = Vector(values[left * 3:left * 3 + 3]).lerp(Vector(values[(left + 1) * 3:(left + 2) * 3]), weight)
+                delta = root_matrix.to_3x3() @ (local_position - Vector(entry['position']))
+                target = blender_rest_positions[short(name)] + conversion @ delta
+                transform = rig.matrix_world @ bone.matrix
+                bone.matrix = rig.matrix_world.inverted() @ Matrix.LocRotScale(target, rotation, transform.to_scale())
+                bone.keyframe_insert('location', frame=frame, group=bone.name)
             bone.scale = (1, 1, 1)
             bpy.context.view_layer.update()
             bone.keyframe_insert('rotation_quaternion', frame=frame, group=bone.name)
@@ -94,7 +109,7 @@ def bake(data, character):
 
 def export(data, character, output):
     rig = bake(data, character)
-    # Include the skinned mesh and embed its original textures in the FBX.
+    # Include the selected skinned mesh, materials and any embedded textures.
     bpy.ops.object.select_all(action='DESELECT')
     for obj in bpy.context.scene.objects:
         if obj.type in {'ARMATURE', 'MESH'}:

@@ -1,0 +1,13 @@
+{
+  "file": "Skrillex Fred Again.. Flowdan Rumble [jnQItw0F7hU].mp4",
+  "fbx_file": "Skrillex Fred Again.. Flowdan Rumble.gvhmr.fbx",
+  "duration": 146.31243896484375,
+  "video_duration": 146.401814,
+  "sha256": "b2882e950a28e7c8bc697caccb0877e8a9cad888b1cf102f0c22d1b6fcabc6fb",
+  "bytes": 62633115,
+  "imported_at": "2026-10-21T17:21:54.936Z",
+  "origin": "imported-fbx",
+  "matching": "Unique normalized title and full animation duration (within 250 ms).",
+  "held_black_outro_frames": null,
+  "note": "Imported FBX only. Original inference metadata and per-frame confidence were not supplied."
+}

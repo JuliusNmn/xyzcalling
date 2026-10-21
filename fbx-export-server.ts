@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import express from 'express';
+import { characterDefinition, DEFAULT_CHARACTER } from './src/characters.js';
 
 const run = promisify(execFile);
 export function blenderExecutable() {
@@ -12,31 +13,44 @@ export function blenderExecutable() {
     ? '/Applications/Blender.app/Contents/MacOS/Blender' : 'blender');
 }
 
-/** Accept only the bounded rotation-only animation format produced by this app. */
+/** Accept only the bounded Mixamo animation format produced by this app. */
 export function validateFbxPayload(data: any) {
   const fail = () => { throw new Error('Invalid FBX animation. Export a nonempty Pose Studio clip of at most 10 minutes.'); };
   const numbers = (a: any, size: number) => Array.isArray(a) && a.length === size && a.every((v: unknown) => typeof v === 'number' && Number.isFinite(v));
   const quat = (a: any) => numbers(a, 4) && Math.abs(Math.hypot(...a) - 1) < .01;
+  characterDefinition(data?.character_id ?? DEFAULT_CHARACTER);
   const duration = data?.animation?.duration;
   if (data?.schema !== 'pose-studio.dance-animation' || !Number.isFinite(duration) || duration <= 0 || duration > 600) fail();
-  if (!quat(data?.rig?.root_transform?.quaternion)) fail();
+  if (!quat(data?.rig?.root_transform?.quaternion) || !numbers(data?.rig?.root_transform?.position, 3) || !numbers(data?.rig?.root_transform?.scale, 3)) fail();
   const bones = data?.rig?.bones, tracks = data?.animation?.tracks;
-  if (!Array.isArray(bones) || bones.length !== 65 || !Array.isArray(tracks) || !tracks.length || tracks.length > 65) fail();
+  if (!Array.isArray(bones) || bones.length !== 65 || !Array.isArray(tracks) || !tracks.length || tracks.length > 195) fail();
   const names = new Set<string>();
   for (const b of bones) {
     if (typeof b?.name !== 'string' || !/^mixamorig[A-Za-z0-9_]+$/.test(b.name) || names.has(b.name) ||
-      (b.parent !== null && !names.has(b.parent)) || !quat(b.quaternion)) fail();
+      (b.parent !== null && !names.has(b.parent)) || !quat(b.quaternion) || !numbers(b.position, 3) || !numbers(b.scale, 3)) fail();
     names.add(b.name);
   }
   const seen = new Set<string>();
   for (const t of tracks) {
-    if (typeof t?.name !== 'string' || !t.name.endsWith('.quaternion') || !names.has(t.name.slice(0, -11)) || seen.has(t.name) || t.type !== 'quaternion') fail();
+    if (typeof t?.name !== 'string') fail();
+    const [bone, property] = t.name.split('.');
+    const rotation = property === 'quaternion';
+    if (!names.has(bone) || t.name !== `${bone}.${property}` || seen.has(t.name) ||
+        !['quaternion', 'position', 'scale'].includes(property) || t.type !== (rotation ? 'quaternion' : 'vector')) fail();
     seen.add(t.name);
     const count = t.times?.length;
-    if (!Number.isInteger(count) || count < 2 || count > 18002 || !numbers(t.times, count) || !numbers(t.values, count * 4)) fail();
+    if (!Number.isInteger(count) || count < 2 || count > 18002 || !numbers(t.times, count) || !numbers(t.values, count * (rotation ? 4 : 3))) fail();
     if (t.times[0] !== 0 || Math.abs(t.times[count - 1] - duration) > .0001 ||
         t.times.some((v: number, i: number) => i > 0 && v <= t.times[i - 1])) fail();
-    for (let i = 0; i < count; i++) if (!quat(t.values.slice(i * 4, i * 4 + 4))) fail();
+    if (rotation) for (let i = 0; i < count; i++) if (!quat(t.values.slice(i * 4, i * 4 + 4))) fail();
+    // The converter preserves rigid bone lengths and unit scale. Only the root
+    // may translate; reject unsupported deformation instead of dropping it.
+    const rest = bones.find((entry: any) => entry.name === bone);
+    if (property === 'scale' && t.values.some((value: number) => Math.abs(value - 1) > .0001)) fail();
+    if (property === 'position') {
+      if (rest.parent !== null && t.values.some((value: number, i: number) => Math.abs(value - rest.position[i % 3]) > .01)) fail();
+      if (!tracks.some((track: any) => track.name === `${bone}.quaternion`)) fail();
+    }
   }
 }
 
@@ -62,7 +76,7 @@ export function fbxRoutes(root: string) {
       await writeFile(input, JSON.stringify(request.body));
       await run(blenderExecutable(), ['--background', '--factory-startup', '--python-exit-code', '1',
         '--python', path.join(root, 'scripts/export_fbx.py'), '--', '--input', input,
-        '--character', path.join(root, 'amsterdam-hackathon/Geo/Chicken Dance.fbx'), '--output', output],
+        '--character', path.join(root, characterDefinition(request.body.character_id ?? DEFAULT_CHARACTER).file), '--output', output],
       { signal: controller.signal, timeout: 300000, maxBuffer: 2 * 1024 * 1024 });
       // This is a fetch response. An attachment header can make embedded browsers
       // intercept it as a navigation download before the caller receives the blob.

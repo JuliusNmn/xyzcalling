@@ -5,13 +5,13 @@ import { buildMotionMetrics, METRICS, motionExportChannels, type MotionMetrics, 
 import { encodeBclip } from './bclip';
 import { processAnimation, type AnimationProcessing } from './animation-processing';
 import { processMotionFrames } from './motion-processing';
-import type { DanceAnimation } from './animation-preview';
+import type { extractAnimation } from './animation-export';
 
 type Config = { solver: SolverKind; settings: SolverSettings; person: number; numPoses: number; confidence: number };
 export class MotionPanel {
   private source?: AudioVideo;
   private data?: MotionMetrics;
-  private extracted?: { selection: ClipSelection; source: AudioVideo; threshold: number; raw: DanceAnimation };
+  private extracted?: { selection: ClipSelection; source: AudioVideo; threshold: number; raw: Awaited<ReturnType<typeof extractAnimation>> };
   private sourceTimes: number[] = [];
   private processing?: ReturnType<typeof processAnimation>['processing'];
   private lastProcessingKey = '';
@@ -171,7 +171,7 @@ export class MotionPanel {
     this.el<HTMLInputElement>('seek').max = String(this.data.times.at(-1));
     this.el('range').textContent = `${smoothed ? 'Smoothed' : 'Raw'} · ${selection.kind === 'full' ? 'complete video' : selectionFileSuffix(selection)} · ${selection.start.toFixed(2)}–${selection.end.toFixed(2)}s · Person ${raw.solver.person_index + 1} · ${this.data.times.length} samples at 30 Hz`;
     this.el('processing-status').textContent = smoothed
-      ? `Updated from cached landmarks · ${this.processing!.window_frames}-frame smoothing · ${this.processing!.aligned_accents} accents aligned · Same timing map as animation for this range. Graphs, joints and .bclip use this version.`
+      ? `Updated from cached landmarks · ${this.processing!.window_frames}-frame smoothing · ${this.processing!.aligned_accents} accents aligned · Timing alignment comes from this landmark extraction. Graphs, joints and .bclip use this version.`
       : 'Raw cached landmarks and original timing. Graphs, joints and .bclip use this version.';
     this.draw();
   }

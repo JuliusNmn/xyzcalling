@@ -1,12 +1,22 @@
-import { AnimationClip, Box3, Color, DirectionalLight, GridHelper, HemisphereLight, LoadingManager,
+import { Box3, Color, DirectionalLight, GridHelper, HemisphereLight, LoadingManager,
   Mesh, PerspectiveCamera, Scene, SRGBColorSpace, Vector3, WebGLRenderer, type Group, type SkinnedMesh } from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { characterDefinition, DEFAULT_CHARACTER, type CharacterId } from './characters';
+import { characterRig, retargetAnimation } from './character-animation';
 import { AnimationPlayback } from './animation-playback';
 import type { extractAnimation } from './animation-export';
 import type { processAnimation } from './animation-processing';
 
-export type DanceAnimation = Awaited<ReturnType<typeof extractAnimation>> & { processing?: ReturnType<typeof processAnimation>['processing'] };
+type ExtractedAnimation = Awaited<ReturnType<typeof extractAnimation>>;
+export type DanceAnimation = Omit<ExtractedAnimation, 'solver' | 'pose_model' | 'quality'> & {
+  solver: ExtractedAnimation['solver'] | { name: 'gvhmr'; settings: null; person_index: null };
+  pose_model: ExtractedAnimation['pose_model'] | { name: 'gvhmr'; inference_mode: 'precomputed'; person_selection: string };
+  quality: { frames: number; tracked_frames: number | null; held_frames: number | null; tracked_fraction: number | null; note: string };
+  character_id?: CharacterId;
+  saved_source?: import('./recorded-animation').RecordedAnimation;
+  processing?: ReturnType<typeof processAnimation>['processing'];
+};
 
 export class AnimationPreview {
   private scene = new Scene();
@@ -15,6 +25,8 @@ export class AnimationPreview {
   private orbit: OrbitControls;
   private resize: ResizeObserver;
   private character?: Group;
+  private targetRig?: DanceAnimation['rig'];
+  private characterId: CharacterId = DEFAULT_CHARACTER;
   private playback?: AnimationPlayback;
   private disposed = false;
   private lastTime?: number;
@@ -120,9 +132,11 @@ export class AnimationPreview {
   }
   private el<T extends HTMLElement = HTMLElement>(name: string) { return this.host.querySelector<T>(`[data-preview="${name}"]`)!; }
   async load(data: DanceAnimation, signal: AbortSignal, rawAnimation?: DanceAnimation['animation']) {
-    const response = await fetch('/character/Chicken%20Dance.fbx', { signal });
+    this.characterId = data.character_id ?? DEFAULT_CHARACTER;
+    const response = await fetch(characterDefinition(this.characterId).url, { signal });
     if (!response.ok) throw new Error('The animation preview character could not be loaded.');
-    const bytes = await response.arrayBuffer(); signal.throwIfAborted();
+    const bytes = await response.arrayBuffer();
+    signal.throwIfAborted();
     if (this.disposed) return;
     const manager = new LoadingManager();
     manager.setURLModifier(url => {
@@ -132,22 +146,18 @@ export class AnimationPreview {
     });
     const character = this.character = new FBXLoader(manager).parse(bytes, '');
     character.animations = [];
-    const root = data.rig.root_transform;
-    character.position.fromArray(root.position); character.quaternion.fromArray(root.quaternion); character.scale.fromArray(root.scale);
-    for (const entry of data.rig.bones) {
-      const bone = character.getObjectByName(entry.name);
-      if (!bone) throw new Error(`Preview character is missing ${entry.name}.`);
-      bone.position.fromArray(entry.position); bone.quaternion.fromArray(entry.quaternion); bone.scale.fromArray(entry.scale);
-    }
+    character.scale.multiplyScalar(.01);
+    this.targetRig = characterRig(character);
     character.traverse(object => { if ((object as SkinnedMesh).isSkinnedMesh) object.frustumCulled = false; });
     character.updateMatrixWorld(true);
     this.scene.add(character);
+    this.setAnimation(data, rawAnimation);
+    character.updateMatrixWorld(true);
     const bounds = new Box3().setFromObject(character);
     bounds.getCenter(this.target); this.distance = Math.max(3, bounds.getSize(new Vector3()).y * 2.3);
     this.resetCamera(); this.resizeViewport();
     this.sourceStart = data.source.start_seconds;
     this.sourceVideo.src = this.sourceUrl;
-    this.setAnimation(data, rawAnimation);
     this.sync();
   }
   setAnimation(data: DanceAnimation, rawAnimation?: DanceAnimation['animation']) {
@@ -156,11 +166,11 @@ export class AnimationPreview {
     this.currentData = data; this.rawAnimation = rawAnimation;
     this.playback?.dispose();
     const raw = this.el<HTMLSelectElement>('variant').value === 'raw' && rawAnimation;
-    this.playback = new AnimationPlayback(this.character, AnimationClip.parse(raw || data.animation));
+    this.playback = new AnimationPlayback(this.character, retargetAnimation(raw || data.animation, data.rig, this.targetRig!));
     this.playback.speed = Number(this.el<HTMLSelectElement>('speed').value);
     this.playback.playing = playing; this.playback.seek(time);
     this.el<HTMLInputElement>('seek').max = String(this.playback.clip.duration);
-    this.el('details').textContent = `${raw ? 'Unsmoothed comparison · Downloads use processed motion' : 'Processed animation · Matches download'} · ${data.duration_seconds.toFixed(2)}s · ${data.quality.tracked_frames}/${data.quality.frames} frames tracked · Person ${data.solver.person_index + 1}`;
+    this.el('details').textContent = `${characterDefinition(this.characterId).name} · ${raw ? 'Unsmoothed comparison · Downloads use processed motion' : 'Processed animation · Matches download'} · ${data.duration_seconds.toFixed(2)}s · ${data.saved_source ? 'GVHMR · Saved animation · Root movement preserved' : `${data.quality.tracked_frames}/${data.quality.frames} frames tracked · Person ${(data.solver.person_index ?? 0) + 1}`}`;
     this.sync();
   }
   private sync() {

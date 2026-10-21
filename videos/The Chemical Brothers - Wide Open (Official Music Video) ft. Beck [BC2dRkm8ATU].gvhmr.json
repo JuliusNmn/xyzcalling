@@ -1,0 +1,13 @@
+{
+  "file": "The Chemical Brothers - Wide Open (Official Music Video) ft. Beck [BC2dRkm8ATU].mp4",
+  "fbx_file": "The Chemical Brothers - Wide Open (Official Music Video) ft. Beck.gvhmr.fbx",
+  "duration": 331,
+  "video_duration": 331.070113,
+  "sha256": "1770959a61422209d91dae84748e0aba9a96fdd377b3f4ad3fe3212fbbe7e7cd",
+  "bytes": 72982476,
+  "imported_at": "2026-10-21T17:22:00.905Z",
+  "origin": "imported-fbx",
+  "matching": "Unique normalized title and full animation duration (within 250 ms).",
+  "held_black_outro_frames": null,
+  "note": "Imported FBX only. Original inference metadata and per-frame confidence were not supplied."
+}

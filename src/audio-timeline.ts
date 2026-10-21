@@ -1,10 +1,13 @@
+import { characterOptions, characterDefinition, DEFAULT_CHARACTER, type CharacterId } from './characters';
 import { parseAnalysis, selectBars, selectFullVideo, selectedBars, selectionLabel, selectionFileSuffix, type AudioAnalysis, type ClipSelection } from './audio-analysis';
 import { DEFAULT_SETTINGS, type SolverKind, type SolverSettings } from './rig/solvers';
 import type { AnimationPreview, DanceAnimation } from './animation-preview';
+import type { RecordedAnimation } from './recorded-animation';
 import { processAnimation, type AnimationProcessing } from './animation-processing';
 
-export type AudioVideo = { name: string; bytes: number; url: string; analysisUrl?: string; browserOnly?: boolean };
+export type AudioVideo = { name: string; bytes: number; url: string; analysisUrl?: string; browserOnly?: boolean; recordedAnimation?: RecordedAnimation };
 export class AudioTimeline {
+  private characterId: CharacterId = DEFAULT_CHARACTER;
   private source?: AudioVideo;
   private externalBusy = false;
   private analysis?: AudioAnalysis;
@@ -27,7 +30,8 @@ export class AudioTimeline {
   };
   constructor(private host: HTMLElement, private video: HTMLVideoElement, private busy: (value: boolean) => void,
     private config: () => { solver: SolverKind; settings: SolverSettings; person: number; numPoses: number; confidence: number },
-    private selectionChanged: () => void = () => {}, private processingChanged: () => void = () => {}) {
+    private selectionChanged: () => void = () => {}, private processingChanged: () => void = () => {},
+    private characterChanged: (id: CharacterId) => void = () => {}) {
     host.innerHTML = `
       <div class="rhythm-heading"><div><span class="eyebrow">MUSIC & MOVEMENT</span><h2>Find your phrase.</h2></div><strong id="audio-tempo">— BPM</strong></div>
       <div class="analysis-actions"><button id="reload-analysis" class="text-button">Reload analysis</button><button id="import-analysis" class="text-button">Open analysis JSON</button><input id="analysis-file" type="file" accept=".json,application/json" hidden /></div>
@@ -46,6 +50,10 @@ export class AudioTimeline {
         <p id="selection-info" class="audio-status"></p>
         <fieldset class="animation-processing">
           <legend>Extracted animation</legend>
+          <label>Character model<select id="animation-character">${characterOptions()}</select></label>
+          <p class="audio-footnote">Choose the character used in the preview and FBX download. Switch models after extraction without rescanning the video.</p>
+          <label>Animation source<select id="animation-source"><option value="custom">Custom · MediaPipe</option><option value="kalidokit">Kalidokit · MediaPipe</option><option value="gvhmr" disabled>GVHMR · No saved animation for this video</option></select></label>
+          <p id="animation-source-help" class="audio-footnote"></p><a id="original-gvhmr" class="text-button" hidden>Download original full GVHMR FBX</a>
           <div class="processing-grid">
             <label>Smoothing<select id="extract-smoothing"><option value="off">Off</option><option value="light" selected>Light · snappy</option><option value="balanced">Balanced</option><option value="strong">Strong</option></select></label>
             <label class="processing-check"><input id="extract-accents" type="checkbox" checked /> Preserve fast accents</label>
@@ -59,9 +67,12 @@ export class AudioTimeline {
         <progress id="extraction-progress" max="1" value="0" hidden aria-label="Animation extraction progress"></progress>
         <p id="extraction-status" class="audio-status" role="status"></p>
         <div id="animation-preview" class="animation-preview" hidden></div>
-        <div class="export-controls"><label>Download format <select id="animation-format"><option value="fbx">FBX · textured character</option><option value="json">JSON · animation & landmarks</option></select></label><button id="export-dance" class="secondary-button" disabled>Download animation</button></div>
-        <p class="audio-footnote">30 FPS · Mixamo body animation · In place · Uses the selected solver and visibility settings. Live rotation smoothing does not apply. FBX sends bone animation to your server for conversion; video stays in your browser. Bar alignment is estimated; audition before exporting. Clips are not automatically seamless loops.</p>
+        <div class="export-controls"><label>Download format <select id="animation-format"><option value="fbx">FBX · selected character</option><option value="json">JSON · animation data</option></select></label><button id="export-dance" class="secondary-button" disabled>Download animation</button></div>
+        <p class="audio-footnote">30 FPS · Mixamo body animation · Custom and Kalidokit use the tracking visibility settings. GVHMR uses the saved dominant person with root movement. Live rotation smoothing does not apply. FBX sends bone animation to your server for conversion; video stays in your browser. Bar alignment is estimated; audition before exporting. Clips are not automatically seamless loops.</p>
       </div>`;
+    this.el('animation-character').addEventListener('change', () => void this.setCharacter(this.el<HTMLSelectElement>('animation-character').value as CharacterId));
+    this.el('animation-source').addEventListener('change', () => { this.clearPreview(); this.sourceHelp(); });
+    this.sourceHelp();
     for (const id of ['extract-smoothing', 'extract-accents', 'extract-advance', 'extract-beats']) this.el(id).addEventListener('input', () => this.reprocess());
     this.el('reload-analysis').addEventListener('click', () => void this.load());
     this.el('import-analysis').addEventListener('click', () => this.el<HTMLInputElement>('analysis-file').click());
@@ -108,6 +119,35 @@ export class AudioTimeline {
     this.raf = requestAnimationFrame(tick);
   }
   private el<T extends HTMLElement = HTMLElement>(id: string) { return this.host.querySelector<T>(`#${id}`)!; }
+  async setCharacter(id: CharacterId) {
+    characterDefinition(id);
+    if (this.characterId === id || this.extraction || this.externalBusy) {
+      this.el<HTMLSelectElement>('animation-character').value = this.characterId;
+      return;
+    }
+    this.characterId = id;
+    this.el<HTMLSelectElement>('animation-character').value = id;
+    this.characterChanged(id);
+    if (!this.prepared) return;
+    const prepared = this.prepared, generation = this.generation;
+    const controller = this.beginOperation();
+    this.preview?.dispose(); this.preview = undefined;
+    this.el('extraction-status').textContent = `Loading ${characterDefinition(id).name}…`;
+    try {
+      const { AnimationPreview } = await import('./animation-preview');
+      controller.signal.throwIfAborted();
+      prepared.data = { ...prepared.data, character_id: id };
+      this.preview = new AnimationPreview(this.el('animation-preview'), prepared.source.url);
+      await this.preview.load(prepared.data, controller.signal, prepared.raw.animation);
+      controller.signal.throwIfAborted();
+      if (generation === this.generation) this.el('extraction-status').textContent = `${characterDefinition(id).name} ready · Preview and FBX download use this character.`;
+    } catch (error) {
+      this.clearPreview();
+      if (generation === this.generation) this.el('extraction-status').textContent = `Character preview unavailable: ${error instanceof Error ? error.message : String(error)}. Extract the cached preview to retry.`;
+    } finally { this.finishOperation(controller); }
+  }
+  getCharacter() { return this.characterId; }
+  getLandmarkConfig() { return this.extractionConfig(); }
   getSelection() { return this.selection; }
   getAnalysis() { return this.analysis; }
   getProcessingSettings() { return this.processingOptions(); }
@@ -122,6 +162,11 @@ export class AudioTimeline {
   private message(text: string) { this.el('analysis-status').textContent = text; }
   async setSource(source?: AudioVideo) {
     this.extraction?.abort(); this.source = source; this.auditioning = false;
+    const option = this.el<HTMLSelectElement>('animation-source').querySelector<HTMLOptionElement>('[value="gvhmr"]')!;
+    option.disabled = !source?.recordedAnimation;
+    option.textContent = source?.recordedAnimation ? 'GVHMR · Saved advanced extraction' : 'GVHMR · No saved animation for this video';
+    if (!source?.recordedAnimation && this.animationSource() === 'gvhmr') this.el<HTMLSelectElement>('animation-source').value = 'custom';
+    this.sourceHelp();
     await this.load();
   }
   async load() {
@@ -272,8 +317,23 @@ export class AudioTimeline {
     const playhead = x(this.video.currentTime);
     if (playhead >= 0 && playhead <= width) { c.strokeStyle = '#af623b'; c.lineWidth = 2; c.beginPath(); c.moveTo(playhead, 0); c.lineTo(playhead, height); c.stroke(); }
   }
+  private animationSource() { return this.el<HTMLSelectElement>('animation-source').value as SolverKind | 'gvhmr'; }
+  private sourceHelp() {
+    const link = this.el<HTMLAnchorElement>('original-gvhmr'), asset = this.source?.recordedAnimation;
+    link.hidden = !asset || this.animationSource() !== 'gvhmr';
+    if (asset) { link.href = `${asset.url}?v=${encodeURIComponent(asset.revision)}`; link.download = this.source!.name.replace(/\.[^.]+$/, '') + '.gvhmr.fbx'; }
+    this.el('animation-source-help').textContent = this.animationSource() === 'gvhmr'
+      ? 'Loads the animation saved beside this video. No pose detection required. Includes root travel; uses the person chosen by GVHMR. Motion signal charts and BCLIP exports still use MediaPipe landmarks and the live preview’s MediaPipe solver.'
+      : 'Extracts the chosen solver from MediaPipe landmarks. The live preview has its own solver selection.';
+  }
+  private extractionConfig() {
+    const config = this.config(), source = this.animationSource();
+    if (source === 'gvhmr') return config;
+    return { ...config, solver: source, settings: source === config.solver ? config.settings : { ...DEFAULT_SETTINGS[source], minVisibility: config.settings.minVisibility, legs: config.settings.legs } };
+  }
   private previewKey() {
-    const config = this.config();
+    const config = this.extractionConfig();
+    if (this.animationSource() === 'gvhmr') return JSON.stringify([this.source?.url, this.generation, this.selection, this.source?.recordedAnimation]);
     return JSON.stringify([this.source?.url, this.generation, this.selection, { ...config, settings: { ...config.settings, smoothing: 0 } }]);
   }
   private clearPreview() {
@@ -307,7 +367,7 @@ export class AudioTimeline {
     if (!this.analysis || !this.selection || !this.source || this.extraction || this.externalBusy) return;
     if (this.prepared?.key === this.previewKey()) { this.reprocess(); return; }
     const source = this.source, analysis = this.analysis, selection = this.selection, generation = this.generation;
-    const config = this.config() ?? { solver: 'custom' as const, settings: DEFAULT_SETTINGS.custom, person: 0, numPoses: 1, confidence: .5 };
+    const config = this.extractionConfig() ?? { solver: 'custom' as const, settings: DEFAULT_SETTINGS.custom, person: 0, numPoses: 1, confidence: .5 };
     const key = this.previewKey();
     this.clearPreview();
     const controller = this.beginOperation();
@@ -315,12 +375,14 @@ export class AudioTimeline {
     let preview: AnimationPreview | undefined;
     try {
       const { extractCachedAnimation } = await import('./animation-cache');
-      const raw = await extractCachedAnimation({ offline: true, url: source.url, analysis, selection, ...config, signal: controller.signal,
+      const raw: DanceAnimation = this.animationSource() === 'gvhmr'
+        ? await (await import('./recorded-animation')).extractRecordedAnimation(source, selection, analysis, controller.signal)
+        : await extractCachedAnimation({ offline: true, url: source.url, analysis, selection, ...config, signal: controller.signal,
         progress: (fraction, message) => { if (generation === this.generation) { this.el<HTMLProgressElement>('extraction-progress').value = fraction; this.el('extraction-status').textContent = message; } },
       });
       controller.signal.throwIfAborted();
       if (key !== this.previewKey()) throw new Error('Selection or tracking settings changed. Extract a new preview.');
-      const data = { ...raw, ...processAnimation(raw.animation, this.processingOptions(), raw.rhythm?.beats_seconds) };
+      const data = { ...raw, character_id: this.characterId, ...processAnimation(raw.animation, this.processingOptions(), raw.rhythm?.beats_seconds) };
       this.el('extraction-status').textContent = 'Loading animation loop preview…';
       const { AnimationPreview } = await import('./animation-preview');
       controller.signal.throwIfAborted();
@@ -331,7 +393,7 @@ export class AudioTimeline {
       if (key !== this.previewKey()) throw new Error('Selection or tracking settings changed. Extract a new preview.');
       this.prepared = { raw, data, key, source, selection };
       this.reprocess();
-      this.el('extraction-status').textContent = `Preview ready · ${data.quality.tracked_frames}/${data.quality.frames} frames tracked (${Math.round(data.quality.tracked_fraction * 100)}%). ${data.quality.held_frames} frames held the previous pose. Inspect the loop, then download.`;
+      this.el('extraction-status').textContent = data.saved_source ? `Preview ready · Saved GVHMR · ${data.duration_seconds.toFixed(2)}s · Root movement preserved. ${data.quality.note}` : `Preview ready · ${data.quality.tracked_frames}/${data.quality.frames} frames tracked (${Math.round((data.quality.tracked_fraction ?? 0) * 100)}%). ${data.quality.held_frames} frames held the previous pose. Inspect the loop, then download.`;
     } catch (error) {
       if (this.preview === preview) this.clearPreview();
       if (generation === this.generation) this.el('extraction-status').textContent = controller.signal.aborted ? 'Extraction cancelled.' : `Preview failed: ${error instanceof Error ? error.message : String(error)}`;
@@ -352,7 +414,7 @@ export class AudioTimeline {
     this.el('preview-dance').textContent = 'Update cached preview';
     const { raw } = this.prepared;
     const result = processAnimation(raw.animation, options, raw.rhythm?.beats_seconds);
-    this.prepared.data = { ...raw, ...result };
+    this.prepared.data = { ...raw, ...result, character_id: this.characterId };
     this.preview?.setAnimation(this.prepared.data, raw.animation);
     this.el('processing-status').textContent = `Updated from cached extraction · ${result.processing.window_frames}-frame smoothing window · ${result.processing.aligned_accents} accents aligned to beats. Preview and download use these settings.`;
   }
@@ -369,10 +431,10 @@ export class AudioTimeline {
         this.el('extraction-status').textContent = 'Checking FBX exporter…';
         const check = await fetch('/api/export/fbx', { signal: controller.signal });
         if (!check.ok) throw new Error((await check.json()).error || 'FBX exporter is unavailable.');
-        this.el('extraction-status').textContent = 'Baking the previewed animation as a textured FBX…';
+        this.el('extraction-status').textContent = `Baking ${characterDefinition(this.characterId).name} with the previewed animation…`;
         const response = await fetch('/api/export/fbx', { method: 'POST', signal: controller.signal,
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ schema: data.schema, rig: data.rig, animation: data.animation }),
+          body: JSON.stringify({ schema: data.schema, character_id: this.characterId, rig: data.rig, animation: data.animation }),
         });
         if (!response.ok) throw new Error((await response.json()).error || 'FBX conversion failed.');
         blob = await response.blob();
@@ -380,7 +442,7 @@ export class AudioTimeline {
       controller.signal.throwIfAborted();
       this.checkPreview(); controller.signal.throwIfAborted();
       const url = URL.createObjectURL(blob);
-      const link = document.createElement('a'); link.href = url; link.download = `${source.name}.${selectionFileSuffix(selection)}.${format === 'fbx' ? 'fbx' : 'dance.json'}`; link.click();
+      const link = document.createElement('a'); link.href = url; link.download = `${source.name}.${this.characterId}.${data.solver.name}.${selectionFileSuffix(selection)}.${format === 'fbx' ? 'fbx' : 'dance.json'}`; link.click();
       setTimeout(() => URL.revokeObjectURL(url), 10000);
       if (generation === this.generation) this.el('extraction-status').textContent = `Downloaded ${selectionLabel(selection).toLowerCase()} as ${format.toUpperCase()} · Processed animation with the selected smoothing and timing settings.`;
     } catch (error) {

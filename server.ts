@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { networkInterfaces } from 'node:os';
+import { recordedAnimation } from './recorded-animations-server.js';
 import { fbxRoutes } from './fbx-export-server.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -28,6 +29,7 @@ app.get('/api/videos', async (_request, response) => {
     url: `/videos/${encodeURIComponent(file.name)}`,
     bytes: (await stat(path.join(videoDirectory, file.name))).size,
     analysisUrl: `/api/videos/${encodeURIComponent(file.name)}/analysis`,
+    recordedAnimation: await recordedAnimation(videoDirectory, file.name),
   })));
   response.setHeader('Cache-Control', 'no-store');
   response.json({ videos: videos.sort((a, b) => a.name.localeCompare(b.name)) });
@@ -56,6 +58,16 @@ app.get('/api/videos/:name/analysis', async (request, response) => {
   }
 });
 
+app.get('/api/videos/:name/gvhmr', async (request, response) => {
+  const name = request.params.name;
+  const asset = (await videoFiles()).some(file => file.name === name) ? await recordedAnimation(videoDirectory, name) : undefined;
+  if (!asset) {
+    response.status(404).json({ error: 'No saved GVHMR animation for this video.' }); return;
+  }
+  response.setHeader('Cache-Control', 'no-cache');
+  response.sendFile(asset.filename, { root: videoDirectory, dotfiles: 'deny' });
+});
+
 app.get('/videos/:name', async (request, response) => {
   const name = request.params.name;
   if (!(await videoFiles()).some(file => file.name === name)) {
@@ -65,6 +77,7 @@ app.get('/videos/:name', async (request, response) => {
   response.sendFile(name, { root: videoDirectory, dotfiles: 'deny' });
 });
 app.use('/wasm', express.static(path.join(root, 'node_modules/@mediapipe/tasks-vision/wasm')));
+app.use('/characters', express.static(path.join(root, 'assets/characters'), { dotfiles: 'deny' }));
 app.use('/character', express.static(path.join(root, 'amsterdam-hackathon/Geo'), { dotfiles: 'deny' }));
 app.get('/models/pose_landmarker_full.task', (_request, response) => {
   response.sendFile(path.join(root, 'models/pose_landmarker_full.task'));

@@ -5,7 +5,7 @@ import { AudioTimeline } from './audio-timeline';
 import { MotionPanel } from './motion-panel';
 import { DEFAULT_SETTINGS } from './rig/solvers';
 
-type VideoEntry = { name: string; title: string; url: string; bytes: number; browserOnly?: boolean; analysisUrl?: string };
+type VideoEntry = { name: string; title: string; url: string; bytes: number; browserOnly?: boolean; analysisUrl?: string; recordedAnimation?: import('./recorded-animation').RecordedAnimation };
 const icon = (name: string) => {
   const paths: Record<string, string> = {
     pose: '<circle cx="12" cy="4" r="2"/><path d="m4 8 8 3 8-3M12 11v5m0 0-6 6m6-6 6 6"/>',
@@ -98,8 +98,8 @@ function extractionBusy(busy: boolean) {
   extractingAnimation = busy; audioTimeline.setBusy(busy); motionPanel?.setBusy(busy);
 }
 const audioTimeline = new AudioTimeline(element('audio-timeline'), video, extractionBusy, extractionConfig,
-  () => motionPanel?.refreshSelection(), () => motionPanel?.processingChanged());
-motionPanel = new MotionPanel(element('motion-panel'), video, () => audioTimeline.getSelection(), extractionConfig, extractionBusy, {
+  () => motionPanel?.refreshSelection(), () => motionPanel?.processingChanged(), id => characterView?.setCharacter(id));
+motionPanel = new MotionPanel(element('motion-panel'), video, () => audioTimeline.getSelection(), () => audioTimeline.getLandmarkConfig(), extractionBusy, {
   getSettings: () => audioTimeline.getProcessingSettings(), setSettings: options => audioTimeline.setProcessingSettings(options),
   getAnalysis: () => audioTimeline.getAnalysis(),
 });
@@ -303,6 +303,12 @@ async function refreshLibrary() {
       void audioTimeline.setSource(); motionPanel.setSource();
       element('empty-state').hidden = false; element('video-title').textContent = 'No video selected';
     }
+    if (selected && !selected.browserOnly) {
+      const fresh = videos.find(entry => entry.url === selected?.url);
+      if (fresh && JSON.stringify(fresh.recordedAnimation) !== JSON.stringify(selected.recordedAnimation)) {
+        selected = fresh; void audioTimeline.setSource(fresh);
+      }
+    }
     renderLibrary();
   } catch (reason) { error(`Could not refresh the library. ${String(reason)}`); }
   finally { button.disabled = false; }
@@ -337,7 +343,9 @@ async function setView(mode: typeof previewMode) {
     element('character-preview').textContent = 'Preparing 3D view…';
     try {
       const { CharacterView } = await import('./character-view');
-      characterView = new CharacterView(element('character-preview'), element('character-controls'));
+      characterView = new CharacterView(element('character-preview'), element('character-controls'), audioTimeline.getCharacter(), id => {
+        void audioTimeline.setCharacter(id).then(() => characterView?.setCharacter(audioTimeline.getCharacter()));
+      });
       if (latest) characterView.update(latest.worldLandmarks, latest.landmarks, latestMediaTime);
     } catch (reason) {
       element('character-preview').textContent = `3D view unavailable: ${String(reason)}. Switch to Video and try again.`;

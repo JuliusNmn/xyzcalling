@@ -1,0 +1,13 @@
+{
+  "file": "PUMPED UP KICKS｜DUBSTEP [LXO-jKksQkM].mp4",
+  "fbx_file": "PUMPED UP KICKS - DUBSTEP.gvhmr.fbx",
+  "duration": 326.9599914550781,
+  "video_duration": 327.053061,
+  "sha256": "254f3ab04c41cd9a2b064350b0a618b8cfc27327d910f719103f3e87bb6ec57a",
+  "bytes": 139538901,
+  "imported_at": "2026-10-21T17:21:49.151Z",
+  "origin": "imported-fbx",
+  "matching": "Unique normalized title and full animation duration (within 250 ms).",
+  "held_black_outro_frames": null,
+  "note": "Imported FBX only. Original inference metadata and per-frame confidence were not supplied."
+}

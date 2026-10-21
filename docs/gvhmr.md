@@ -100,3 +100,39 @@ $blender = './artifacts/blender/blender-4.2.0-windows-x64/blender.exe'
 This uses the real character, a turning/translating synthetic skeleton,
 and a 1.047-second fractional endpoint. Each production export performs
 the same FBX reimport/timing/transform checks automatically.
+
+## Using saved animations in Pose Studio
+
+Select the matching video, then choose **GVHMR · Saved advanced extraction**
+under **Extracted animation → Animation source**, beside Custom and Kalidokit.
+The option is available when that video has a matching `.gvhmr.json` and
+`.gvhmr.fbx`. Metadata can also name a different local FBX via `fbx_file`;
+only a plain `.gvhmr.fbx` filename inside the video directory is accepted.
+Refresh the video library after adding files.
+
+After pulling title-named FBXs from another machine, run `npm run import:gvhmr`.
+This registers missing metadata using a unique normalized title match (including
+local `.info.json` titles), verifies a 65-bone animated Mixamo rig, and checks
+animation duration against the local video within 250 ms. It preserves existing
+metadata, leaves ambiguous/unmatched files unlinked, and does not rename videos
+or duplicate FBXs. Imported metadata records the explicit file mapping and marks
+original inference/outro information as unknown.
+
+Some muxed videos outlast their FBX by a few frames. Excerpts hold the final pose
+for at most 250 ms to cover that ending and report the hold in the preview note.
+Motion timing is not stretched; larger gaps still fail validation.
+
+Choose a bar range or **Complete video** and click **Extract & preview animation**.
+GVHMR loads the saved FBX without rerunning MediaPipe or the GPU extraction.
+The preview follows the source video clock. Smoothing, motion advance and beat
+alignment reuse cached animation; both rotations and hip translation follow
+the same time map. FBX and JSON downloads contain the selected processed range,
+including an exact fractional closing key. The separate **Download original full
+GVHMR FBX** link preserves the untouched full-length extraction.
+
+The saved extraction uses its original dominant person. Live detection/person
+controls do not change it. The live character comparison remains Custom versus
+Kalidokit. Motion signal charts and BCLIP exports still use MediaPipe landmarks
+and the live preview's solver; they do not derive measurements from the saved
+GVHMR skeleton. JSON makes this explicit with empty landmark frames and unknown
+per-frame confidence. No new foot locking or loop-seam blending is applied.

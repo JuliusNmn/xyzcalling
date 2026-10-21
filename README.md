@@ -56,10 +56,28 @@ recent analyzed frame and includes its video timestamp.
 
 ## Character preview and solvers
 
-Choose **Character + video** to load the textured Mixamo character from
-`amsterdam-hackathon/Geo/Chicken Dance.fbx`. Its embedded dance is disabled:
-only the current video's MediaPipe results drive the preview. Drag to orbit,
-scroll to zoom, or use **Reset camera**. Character assets load on demand.
+Choose **Character + video** to preview a rig, or use **Character model** in
+**Extracted animation** to choose the character for preview and FBX downloads.
+The selectors stay in sync. Available models are the original **Chicken Dance ·
+Mixamo** and **Green Segments · Low poly**, a hand-built green figure with separate,
+flat-shaded segments inspired by the supplied reference. Switching characters
+reuses extracted motion, including saved GVHMR clips, without scanning the video
+again. Drag to orbit, scroll to zoom, or use **Reset camera**.
+
+The new asset is `assets/characters/green-segments.fbx` (432 authored vertices,
+352 polygon faces, 65 bones; no bundled animation). Its geometry is manually
+specified in `scripts/create_green_segments.py`, using only the original skeleton
+for compatibility. Rebuild with:
+
+```sh
+/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python-exit-code 1 --python scripts/create_green_segments.py
+```
+
+`src/characters.ts` is the shared model catalog. FBX requests accept a catalog
+`character_id`; older requests default to Chicken Dance. The server rejects unknown
+IDs and loads only catalog paths. Preview retargeting accounts for each FBX's rest
+axes and preserves root travel. JSON retains the source rig/motion and records the
+chosen `character_id`; FBX contains the selected model with that motion baked in.
 
 Choose **Compare solvers** to see Custom and Kalidokit side by side, with the
 source video below. Both use the same detected person and video frame, with
@@ -118,6 +136,10 @@ The server exposes the video library to that network without an additional login
 To remove the service permanently, stop it and remove
 `~/Library/LaunchAgents/local.pose-studio.plist`.
 
+For title-named GVHMR FBXs pulled from another machine, run `npm run import:gvhmr`
+to validate and link them to the local video filenames, then refresh the library.
+See [saved animation matching](docs/gvhmr.md#using-saved-animations-in-pose-studio).
+
 ## Beats, waveform and dance excerpts
 
 Run `npm run analyze:audio` to generate `<video filename>.analysis.json` beside
@@ -174,8 +196,7 @@ scrubbing, speed changes and looping. **Unsmoothed comparison** shows the cached
 animation; downloads always use the processed version. Turn sync off to play the
 animation on its own. None of these controls change the main live video preview.
 
-FBX includes the textured, skinned Mixamo
-character with the selected solver's animation; JSON includes quaternion animation,
+FBX includes the selected skinned character and its materials with the selected solver's animation; JSON includes quaternion animation,
 source landmarks, timing, solver settings and tracking-quality counts. Browser-only videos support
 manually opening their sidecar JSON without uploading anything.
 
