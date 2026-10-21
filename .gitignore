@@ -1,0 +1,12 @@
+.DS_Store
+__pycache__/
+.venv/
+models/
+*.poses.jsonl
+*.webm
+node_modules/
+dist/
+dist-server/
+logs/
+videos/*
+!videos/.gitkeep
