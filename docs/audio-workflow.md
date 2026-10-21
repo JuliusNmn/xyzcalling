@@ -44,10 +44,19 @@ explicit error; silent audio produces a waveform and empty beat/bar arrays.
    video**. Without opening that panel, export uses the custom solver defaults
    and Person 1. The main detection confidence and maximum-people settings also
    apply. People are indexed by detection order, not persistent identity.
-6. Choose **FBX** or **JSON**, then **Extract & export animation** to sample this exact time interval at 30 FPS
+6. Press **Extract & preview animation** to sample this exact time interval at 30 FPS
    using a separate video decoder and MediaPipe instance, then bakes bone-local
    quaternion tracks. It doesn't depend on how much of the video was played.
-   Cancel is available, and changing videos cancels the operation.
+   Cancel is available, and changing videos cancels the operation. The resulting
+   textured character animation automatically loops in its own preview panel.
+7. Use **Pause loop**, **Restart**, the position scrubber, **Speed**, and the orbit
+   camera to inspect the baked motion and loop seam. Scrubbing pauses playback
+   and can display the exact final pose. Previewing does not run more inference.
+8. Choose **FBX** or **JSON** and press **Download animation**. Both use the exact
+   animation you previewed, with the original duration and one cycle. Changing
+   format, preview speed or camera does not require another extraction. Changing
+   source video, selected range, solver settings, person or detection settings
+   clears the preview and disables downloading until a new extraction completes.
 
 For a browser-only local video, use **Open analysis JSON** to select the sidecar
 manually. Video and analysis files remain in the browser. FBX conversion sends
@@ -149,7 +158,9 @@ large JSON files because they include landmarks as well as animation tracks.
 The browser exporter caps a selection at 100,000 regular samples (about 55
 minutes at 30 FPS); larger selections report an error instead of exhausting
 browser memory. Loop playback is a preview setting and doesn't bake a repeated
-or blended animation into the exported clip.
+or blended animation into the exported clip. The animation preview jumps directly
+from the closing pose to the opening pose; it intentionally exposes a mismatched
+seam. It plays the baked tracks on the character with its original dance disabled.
 
 ## FBX export
 
@@ -160,9 +171,12 @@ mesh and embedded textures. It preserves the current solver, smoothing, leg
 tracking, visibility and person selections. It does not rerun pose inference.
 
 Set `BLENDER_BIN` if Blender is outside `/Applications/Blender.app` on macOS or
-outside PATH on other systems. The UI checks availability before extracting a
-clip. Only one conversion runs at a time; canceling stops Blender and deletes
+outside PATH on other systems. The UI checks availability when downloading FBX;
+extracting and previewing work without Blender. Only one conversion runs at a time;
+canceling stops Blender and deletes
 temporary files. Selections over ten minutes must use a shorter range or JSON.
+Canceling or failing a download retains the prepared animation so you can retry
+or switch formats without extracting again.
 
 Keys begin at time zero (Blender's importer displays that as frame 1). For
 excerpts ending between 30 Hz samples, the exporter samples quaternion curves

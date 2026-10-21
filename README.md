@@ -128,8 +128,15 @@ bar boundaries and tempo. Matching sidecars are reused; `--force` regenerates.
 The viewer loads these files automatically. Use **Reload analysis** after an
 extraction, select a starting bar and **4 / 8 / 16 / 32 / 64 bars** or **Complete
 video**, audition the phrase with **Loop selection** (on by default),
-then choose **FBX** or **JSON** and press **Extract & export animation**. Export
-samples the selected range at 30 FPS. FBX includes the textured, skinned Mixamo
+then press **Extract & preview animation**. Extraction samples the selected range
+at 30 FPS and opens a textured 3D loop preview. Pause, restart, scrub to any pose,
+change preview speed, or drag to orbit before choosing **FBX** or **JSON** and
+pressing **Download animation**. Downloads reuse the previewed animation without
+repeating pose inference. Changing the video, selection or tracking/solver settings
+clears the preview and requires a new extraction. Preview speed only affects
+playback; downloads retain the original duration and contain one cycle.
+
+FBX includes the textured, skinned Mixamo
 character with the selected solver's animation; JSON includes quaternion animation,
 source landmarks, timing, solver settings and tracking-quality counts. Browser-only videos support
 manually opening their sidecar JSON without uploading anything.
@@ -140,6 +147,8 @@ Only the skeleton and baked rotation tracks are sent to the server; the source
 video and detected landmarks stay in the browser. Temporary conversion files
 are removed after download or cancellation. FBX selections are limited to ten
 minutes. JSON export remains entirely in the browser.
+Loop previews also run entirely in the browser and work without Blender. The
+loop seam is shown without blending; this feature does not make clips seamless.
 
 Run `npm run test:fbx` for a complete render → MediaPipe full → browser solver →
 HTTP FBX export → reimport/render comparison. Requires Blender, FFmpeg, `uv`, and

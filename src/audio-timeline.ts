@@ -1,5 +1,6 @@
 import { parseAnalysis, selectBars, selectFullVideo, selectedBars, selectionLabel, selectionFileSuffix, type AudioAnalysis, type ClipSelection } from './audio-analysis';
 import { DEFAULT_SETTINGS, type SolverKind, type SolverSettings } from './rig/solvers';
+import type { AnimationPreview, DanceAnimation } from './animation-preview';
 
 export type AudioVideo = { name: string; bytes: number; url: string; analysisUrl?: string; browserOnly?: boolean };
 export class AudioTimeline {
@@ -9,6 +10,8 @@ export class AudioTimeline {
   private generation = 0;
   private request?: AbortController;
   private extraction?: AbortController;
+  private preview?: AnimationPreview;
+  private prepared?: { data: DanceAnimation; key: string; source: AudioVideo; selection: ClipSelection };
   private auditioning = false;
   private raf = 0;
   private lastDrawTime = -1;
@@ -38,9 +41,11 @@ export class AudioTimeline {
         <div class="wave-label"><span id="detail-label">SELECTION DETAIL · Beats / numbered bar starts</span><span id="selection-range"></span></div>
         <canvas id="wave-detail" class="wave-detail" role="img" aria-label="Selected phrase waveform and beat markers"></canvas>
         <p id="selection-info" class="audio-status"></p>
-        <div class="export-controls"><label>Export format <select id="animation-format"><option value="fbx">FBX · textured character</option><option value="json">JSON · animation & landmarks</option></select></label><button id="export-dance" class="secondary-button primary-action">Extract & export animation</button><button id="cancel-extraction" class="text-button" hidden>Cancel</button></div>
+        <div class="export-controls"><button id="preview-dance" class="secondary-button primary-action">Extract & preview animation</button><button id="cancel-extraction" class="text-button" hidden>Cancel</button></div>
         <progress id="extraction-progress" max="1" value="0" hidden aria-label="Animation extraction progress"></progress>
         <p id="extraction-status" class="audio-status" role="status"></p>
+        <div id="animation-preview" class="animation-preview" hidden></div>
+        <div class="export-controls"><label>Download format <select id="animation-format"><option value="fbx">FBX · textured character</option><option value="json">JSON · animation & landmarks</option></select></label><button id="export-dance" class="secondary-button" disabled>Download animation</button></div>
         <p class="audio-footnote">30 FPS · Mixamo body animation · In place · Uses the current character solver settings. FBX sends bone animation to your server for conversion; video stays in your browser. Bar alignment is estimated; audition before exporting. Clips are not automatically seamless loops.</p>
       </div>`;
     this.el('reload-analysis').addEventListener('click', () => void this.load());
@@ -70,6 +75,7 @@ export class AudioTimeline {
       this.el<HTMLInputElement>('start-bar').value = String(Math.max(0, Math.min(index, max)) + 1); this.choose();
     });
     this.el('play-phrase').addEventListener('click', () => void this.play());
+    this.el('preview-dance').addEventListener('click', () => void this.prepare());
     this.el('export-dance').addEventListener('click', () => void this.export());
     this.el('cancel-extraction').addEventListener('click', () => this.extraction?.abort());
     this.video.addEventListener('loadedmetadata', this.onMetadata);
@@ -77,6 +83,7 @@ export class AudioTimeline {
     this.video.addEventListener('pause', this.onPause);
     this.resize = new ResizeObserver(() => this.draw()); this.resize.observe(host);
     const tick = () => {
+      this.checkPreview();
       if (this.analysis) {
         this.advancePlayback();
         if (this.video.currentTime !== this.lastDrawTime) this.draw();
@@ -92,6 +99,7 @@ export class AudioTimeline {
     await this.load();
   }
   async load() {
+    this.clearPreview();
     if (this.auditioning) this.video.pause();
     this.auditioning = false; this.playButton();
     const generation = ++this.generation;
@@ -124,6 +132,7 @@ export class AudioTimeline {
     if (!this.source) return;
     const analysis = parseAnalysis(value, this.source);
     if (Number.isFinite(this.video.duration) && Math.abs(analysis.duration_seconds - this.video.duration) > .5) throw new Error('Analysis duration does not match this video.');
+    this.clearPreview();
     this.analysis = analysis;
     this.el('audio-content').hidden = false;
     this.el('audio-tempo').textContent = analysis.bpm === null ? 'No tempo detected' : `${analysis.bpm.toFixed(1)} BPM`;
@@ -149,7 +158,9 @@ export class AudioTimeline {
     this.el<HTMLButtonElement>('previous-beat').disabled = full || !!this.extraction || !selectBars(this.analysis, first, count, beatOffset - 1);
     this.el<HTMLButtonElement>('next-beat').disabled = full || !!this.extraction || !selectBars(this.analysis, first, count, beatOffset + 1);
     this.el<HTMLButtonElement>('play-phrase').disabled = !this.selection || !!this.extraction;
-    this.el<HTMLButtonElement>('export-dance').disabled = !this.selection || !!this.extraction;
+    this.checkPreview();
+    this.el<HTMLButtonElement>('preview-dance').disabled = !this.selection || !!this.extraction;
+    this.el<HTMLButtonElement>('export-dance').disabled = !this.prepared || !!this.extraction;
     if (this.selection) {
       const s = this.selection;
       const beats = this.analysis.beats_seconds.filter(t => t >= s.start && t < s.end).length;
@@ -233,32 +244,79 @@ export class AudioTimeline {
     const playhead = x(this.video.currentTime);
     if (playhead >= 0 && playhead <= width) { c.strokeStyle = '#af623b'; c.lineWidth = 2; c.beginPath(); c.moveTo(playhead, 0); c.lineTo(playhead, height); c.stroke(); }
   }
-  private async export() {
-    if (!this.analysis || !this.selection || !this.source || this.extraction) return;
-    const controller = this.extraction = new AbortController(), source = this.source, generation = this.generation;
-    const analysis = this.analysis, selection = this.selection;
-    const format = this.el<HTMLSelectElement>('animation-format').value;
-    this.video.pause(); this.auditioning = false; this.busy(true);
+  private previewKey() {
+    return JSON.stringify([this.source?.url, this.generation, this.selection, this.config()]);
+  }
+  private clearPreview() {
+    this.preview?.dispose(); this.preview = undefined; this.prepared = undefined;
+    this.el('animation-preview').hidden = true;
+    this.el<HTMLButtonElement>('export-dance').disabled = true;
+  }
+  private checkPreview() {
+    if (this.prepared && this.prepared.key !== this.previewKey()) {
+      this.extraction?.abort();
+      this.clearPreview();
+      this.el('extraction-status').textContent = 'Selection or tracking settings changed. Extract a new preview before downloading.';
+    }
+  }
+  private beginOperation() {
+    const controller = this.extraction = new AbortController();
+    this.video.pause(); this.auditioning = false; this.playButton(); this.busy(true);
     this.host.querySelectorAll<HTMLButtonElement | HTMLInputElement | HTMLSelectElement>('button, input, select').forEach(el => { el.disabled = true; });
     this.el<HTMLButtonElement>('cancel-extraction').disabled = false; this.el('cancel-extraction').hidden = false;
-    this.el('extraction-progress').hidden = false;
-    this.el<HTMLProgressElement>('extraction-progress').value = 0;
+    return controller;
+  }
+  private finishOperation(controller: AbortController) {
+    if (this.extraction !== controller) return;
+    this.extraction = undefined; this.busy(false);
+    this.host.querySelectorAll<HTMLButtonElement | HTMLInputElement | HTMLSelectElement>('button, input, select').forEach(el => { el.disabled = false; });
+    this.el('cancel-extraction').hidden = true; this.el('extraction-progress').hidden = true; this.choose();
+  }
+  private async prepare() {
+    if (!this.analysis || !this.selection || !this.source || this.extraction) return;
+    const source = this.source, analysis = this.analysis, selection = this.selection, generation = this.generation;
+    const config = this.config() ?? { solver: 'custom' as const, settings: DEFAULT_SETTINGS.custom, person: 0, numPoses: 1, confidence: .5 };
+    const key = this.previewKey();
+    this.clearPreview();
+    const controller = this.beginOperation();
+    this.el('extraction-progress').hidden = false; this.el<HTMLProgressElement>('extraction-progress').value = 0;
+    let preview: AnimationPreview | undefined;
     try {
-      if (format === 'fbx') {
-        if (selection.end - selection.start > 600) throw new Error('FBX export supports clips up to 10 minutes. Choose a shorter selection or export JSON.');
-        this.el('extraction-status').textContent = 'Checking FBX exporter…';
-        const check = await fetch('/api/export/fbx', { signal: controller.signal });
-        if (!check.ok) throw new Error((await check.json()).error || 'FBX exporter is unavailable.');
-      }
-      const config = this.config() ?? { solver: 'custom' as const, settings: DEFAULT_SETTINGS.custom, person: 0, numPoses: 1, confidence: .5 };
       const { extractAnimation } = await import('./animation-export');
       const data = await extractAnimation({ url: source.url, analysis, selection, ...config, signal: controller.signal,
         progress: (fraction, message) => { if (generation === this.generation) { this.el<HTMLProgressElement>('extraction-progress').value = fraction; this.el('extraction-status').textContent = message; } },
       });
       controller.signal.throwIfAborted();
+      if (key !== this.previewKey()) throw new Error('Selection or tracking settings changed. Extract a new preview.');
+      this.el('extraction-status').textContent = 'Loading animation loop preview…';
+      const { AnimationPreview } = await import('./animation-preview');
+      controller.signal.throwIfAborted();
+      this.el('animation-preview').hidden = false;
+      preview = this.preview = new AnimationPreview(this.el('animation-preview'));
+      await preview.load(data, controller.signal);
+      controller.signal.throwIfAborted();
+      if (key !== this.previewKey()) throw new Error('Selection or tracking settings changed. Extract a new preview.');
+      this.prepared = { data, key, source, selection };
+      this.el('extraction-status').textContent = `Preview ready · ${data.quality.tracked_frames}/${data.quality.frames} frames tracked (${Math.round(data.quality.tracked_fraction * 100)}%). ${data.quality.held_frames} frames held the previous pose. Inspect the loop, then download.`;
+    } catch (error) {
+      if (this.preview === preview) this.clearPreview();
+      if (generation === this.generation) this.el('extraction-status').textContent = controller.signal.aborted ? 'Extraction cancelled.' : `Preview failed: ${error instanceof Error ? error.message : String(error)}`;
+    } finally { this.finishOperation(controller); }
+  }
+  private async export() {
+    this.checkPreview();
+    if (!this.prepared || this.extraction) return;
+    const { data, source, selection } = this.prepared, generation = this.generation;
+    const format = this.el<HTMLSelectElement>('animation-format').value;
+    const controller = this.beginOperation();
+    try {
       let blob: Blob;
       if (format === 'fbx') {
-        this.el('extraction-status').textContent = 'Baking textured FBX on your server…';
+        if (data.duration_seconds > 600) throw new Error('FBX export supports clips up to 10 minutes. Choose a shorter selection or download JSON.');
+        this.el('extraction-status').textContent = 'Checking FBX exporter…';
+        const check = await fetch('/api/export/fbx', { signal: controller.signal });
+        if (!check.ok) throw new Error((await check.json()).error || 'FBX exporter is unavailable.');
+        this.el('extraction-status').textContent = 'Baking the previewed animation as a textured FBX…';
         const response = await fetch('/api/export/fbx', { method: 'POST', signal: controller.signal,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ schema: data.schema, rig: data.rig, animation: data.animation }),
@@ -267,19 +325,19 @@ export class AudioTimeline {
         blob = await response.blob();
       } else blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
       controller.signal.throwIfAborted();
+      this.checkPreview(); controller.signal.throwIfAborted();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a'); link.href = url; link.download = `${source.name}.${selectionFileSuffix(selection)}.${format === 'fbx' ? 'fbx' : 'dance.json'}`; link.click();
       setTimeout(() => URL.revokeObjectURL(url), 10000);
-      this.el('extraction-status').textContent = `Exported ${selectionLabel(selection).toLowerCase()} · ${data.quality.tracked_frames}/${data.quality.frames} frames tracked (${Math.round(data.quality.tracked_fraction * 100)}%). ${data.quality.held_frames} frames held the previous pose.`;
+      if (generation === this.generation) this.el('extraction-status').textContent = `Downloaded ${selectionLabel(selection).toLowerCase()} as ${format.toUpperCase()} · Same animation as the preview.`;
     } catch (error) {
-      if (generation === this.generation) this.el('extraction-status').textContent = controller.signal.aborted ? 'Extraction cancelled.' : `Export failed: ${error instanceof Error ? error.message : String(error)}`;
-    } finally {
-      this.extraction = undefined; this.busy(false);
-      this.host.querySelectorAll<HTMLButtonElement | HTMLInputElement | HTMLSelectElement>('button, input, select').forEach(el => { el.disabled = false; });
-      this.el('cancel-extraction').hidden = true; this.el('extraction-progress').hidden = true; this.choose();
-    }
+      if (generation === this.generation) this.el('extraction-status').textContent = controller.signal.aborted
+        ? (this.prepared ? 'Download cancelled. Your preview is still available.' : 'Download cancelled. Extract a new preview before downloading.')
+        : `Download failed: ${error instanceof Error ? error.message : String(error)}`;
+    } finally { this.finishOperation(controller); }
   }
   dispose() {
+    this.clearPreview();
     this.extraction?.abort(); this.request?.abort(); this.resize.disconnect(); cancelAnimationFrame(this.raf);
     this.video.removeEventListener('loadedmetadata', this.onMetadata); this.video.removeEventListener('ended', this.onEnded); this.video.removeEventListener('pause', this.onPause);
   }
