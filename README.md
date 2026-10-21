@@ -204,6 +204,23 @@ commands, import example and limitations.
 
 ## Python pose extraction
 
+### GVHMR full-video motion capture
+
+The offline GVHMR pipeline recovers body rotations and root travel, retargets
+them to the textured Mixamo character, and writes `<video>.gvhmr.fbx` beside
+each source in `videos/`. It also saves SMPL-X motion in `.gvhmr.npz`, source
+and processing metadata in `.gvhmr.json`, and FBX round-trip checks in
+`.gvhmr.validation.json`.
+
+```powershell
+./scripts/setup-gvhmr.ps1 -SmplxModel 'C:/path/to/SMPLX_NEUTRAL.npz'
+./artifacts/gvhmr-env/Scripts/python.exe scripts/gvhmr_extract.py
+```
+
+Requires an NVIDIA CUDA GPU and the licensed SMPL-X v1.1 neutral model.
+See [GVHMR setup and output details](docs/gvhmr.md). The environment, model
+weights, Blender, and intermediate results stay under ignored `artifacts/`.
+
 The earlier offline extractor still works with the video's new location:
 
 ```sh

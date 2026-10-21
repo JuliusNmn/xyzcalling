@@ -1,0 +1,25 @@
+{
+  "file": "_hide.guy__7182688726886239494.mp4",
+  "sha256": "df14df367f4fa06ce3f1e6d7be3d829ee694ef201de92d9c7a44b7e3ea75d060",
+  "frames": 914,
+  "fps": 30.0,
+  "width": 720,
+  "height": 1280,
+  "duration": 30.46666666666667,
+  "first_pts": 0.0,
+  "inference_fps": 30,
+  "inference_frames": 914,
+  "static_camera": false,
+  "recovered_frames": 914,
+  "held_black_outro_frames": 0,
+  "checkpoints_sha256": {
+    "gvhmr/gvhmr_siga24_release.ckpt": "4fae7da2de388d5da3514cb27a2d003f364dacb280e9cf88972b710e589c6b91",
+    "yolo/yolov8x.pt": "c4d5a3f000d771762f03fc8b57ebd0aae324aeaefdd6e68492a9c4470f2d1e8b",
+    "vitpose/vitpose-h-multi-coco.pth": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
+    "hmr2/epoch=10-step=25000.ckpt": "2dcf79638109781d1ae5f5c44fee5f55bc83291c210653feead9b7f04fa6f20e"
+  },
+  "gvhmr_commit": "ee960bb6e2ea2d381aa97f08e9b71ef320b624b1",
+  "character": "C:\\Users\\naeum\\Desktop\\xyzcalling\\amsterdam-hackathon\\Geo\\Chicken Dance.fbx",
+  "character_sha256": "8ce0844554d0b4fd8353638214165cba69a4237a8fd3b305226157bccc59b421",
+  "body_model_sha256": "376021446ddc86e99acacd795182bbef903e61d33b76b9d8b359c2b0865bd992"
+}
