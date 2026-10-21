@@ -1,8 +1,10 @@
 import { FilesetResolver, PoseLandmarker, type PoseLandmarkerResult, type NormalizedLandmark } from '@mediapipe/tasks-vision';
 import './style.css';
 import type { CharacterView } from './character-view';
+import { AudioTimeline } from './audio-timeline';
+import { DEFAULT_SETTINGS } from './rig/solvers';
 
-type VideoEntry = { name: string; title: string; url: string; bytes: number; browserOnly?: boolean };
+type VideoEntry = { name: string; title: string; url: string; bytes: number; browserOnly?: boolean; analysisUrl?: string };
 const icon = (name: string) => {
   const paths: Record<string, string> = {
     pose: '<circle cx="12" cy="4" r="2"/><path d="m4 8 8 3 8-3M12 11v5m0 0-6 6m6-6 6 6"/>',
@@ -46,7 +48,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <div id="character-preview" class="viewer-panel character-panel" hidden></div>
         </div>
         <div class="stats"><div><span>Detected poses</span><strong id="poses">—</strong><small>people in frame</small></div><div><span>Visible landmarks</span><strong id="landmarks">—</strong><small>33 points per pose</small></div><div><span>Inference time</span><strong id="latency">—</strong><small>milliseconds / frame</small></div><div><span>Tracking rate</span><strong id="fps">—</strong><small>frames / second</small></div></div>
-        <div class="insight"><span class="insight-icon">${icon('pose')}</span><div><strong>A new perspective on movement</strong><p>Play or scrub through your video to inspect the pose. Markers follow the body; confidence controls which points are shown.</p></div></div>
+        <section id="audio-timeline" class="audio-timeline" aria-label="Audio analysis and dance extraction"></section>
       </div>
       <aside class="controls-panel">
         <div class="panel-heading"><h2>Tracking controls</h2><span class="small-tag">LIVE</span></div>
@@ -84,6 +86,13 @@ let configTimer: ReturnType<typeof setTimeout>;
 let characterView: CharacterView | undefined;
 let characterLoading = false;
 let showCharacter = false;
+let extractingAnimation = false;
+const audioTimeline = new AudioTimeline(element('audio-timeline'), video, busy => {
+  extractingAnimation = busy;
+}, () => ({
+  ...(characterView?.exportSettings() ?? { solver: 'custom' as const, settings: { ...DEFAULT_SETTINGS.custom }, person: 0 }),
+  numPoses: settings().numPoses, confidence: settings().minPoseDetectionConfidence,
+}));
 
 function error(message: string) {
   element('error').textContent = message;
@@ -185,7 +194,7 @@ function draw() {
 
 function infer(now: number) {
   requestAnimationFrame(infer);
-  if (!model || modelLoading || video.seeking || video.readyState < 2 || !video.videoWidth || video.currentTime === lastVideoTime || now - lastInference < 40) return;
+  if (extractingAnimation || !model || modelLoading || video.seeking || video.readyState < 2 || !video.videoWidth || video.currentTime === lastVideoTime || now - lastInference < 40) return;
   try {
     const width = Math.min(960, video.videoWidth);
     const height = Math.round(width * video.videoHeight / video.videoWidth);
@@ -248,6 +257,7 @@ function selectVideo(entry: VideoEntry) {
     ? 'Processed on this device.<br>Your local video is never uploaded.'
     : 'Processed in your browser.<br>Your video stays on your network.';
   video.src = entry.url; video.load();
+  void audioTimeline.setSource(entry);
   renderLibrary();
   // A fresh graph avoids carrying tracking state from a previous video.
   if (model) void loadModel();
@@ -279,6 +289,7 @@ async function refreshLibrary() {
     if (!existing && (browserVideo || videos.length)) selectVideo(browserVideo || videos[0]);
     else if (!existing && !videos.length) {
       selected = undefined; video.pause(); video.removeAttribute('src'); video.load(); clearResults();
+      void audioTimeline.setSource();
       element('empty-state').hidden = false; element('video-title').textContent = 'No video selected';
     }
     renderLibrary();
@@ -297,6 +308,7 @@ element('local-file').addEventListener('change', () => {
 window.addEventListener('pagehide', event => {
   if (!event.persisted && browserVideo) URL.revokeObjectURL(browserVideo.url);
   if (!event.persisted) characterView?.dispose();
+  if (!event.persisted) audioTimeline.dispose();
 });
 async function setView(character: boolean) {
   showCharacter = character;

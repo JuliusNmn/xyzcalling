@@ -1,5 +1,5 @@
 import express from 'express';
-import { readdir, stat } from 'node:fs/promises';
+import { readdir, readFile, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,9 +25,33 @@ app.get('/api/videos', async (_request, response) => {
     title: file.name.replace(/\.[^.]+$/, ''),
     url: `/videos/${encodeURIComponent(file.name)}`,
     bytes: (await stat(path.join(videoDirectory, file.name))).size,
+    analysisUrl: `/api/videos/${encodeURIComponent(file.name)}/analysis`,
   })));
   response.setHeader('Cache-Control', 'no-store');
   response.json({ videos: videos.sort((a, b) => a.name.localeCompare(b.name)) });
+});
+
+app.get('/api/videos/:name/analysis', async (request, response) => {
+  const name = request.params.name;
+  if (!(await videoFiles()).some(file => file.name === name)) {
+    response.status(404).json({ error: 'Video not found' }); return;
+  }
+  response.setHeader('Cache-Control', 'no-store');
+  try {
+    const info = await stat(path.join(videoDirectory, name));
+    const data = JSON.parse(await readFile(path.join(videoDirectory, name + '.analysis.json'), 'utf8'));
+    if (!data || data.schema !== 'pose-studio.audio-analysis' || data.version !== 1 || data.source?.name !== name ||
+        data.source?.bytes !== info.size || !Number.isFinite(data.source?.mtime_ms) || Math.abs(data.source?.mtime_ms - Math.floor(info.mtimeMs)) > 1) {
+      response.status(409).json({ error: 'Analysis is stale. Regenerate it with npm run analyze:audio -- --force.' }); return;
+    }
+    response.json(data);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      response.status(404).json({ error: 'No audio analysis yet. Run npm run analyze:audio, then reload analysis.' });
+    } else if (error instanceof SyntaxError) {
+      response.status(422).json({ error: 'Invalid analysis JSON. Regenerate it with --force.' });
+    } else { throw error; }
+  }
 });
 
 app.get('/videos/:name', async (request, response) => {

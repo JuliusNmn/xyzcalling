@@ -167,6 +167,9 @@ export class CharacterView {
   update(worldLandmarks: Landmark[][], landmarks: Landmark[][], time: number) {
     this.frame = { worldLandmarks, landmarks, time }; if (this.active) this.solve();
   }
+  exportSettings() {
+    return { solver: this.kind, settings: { ...this.settings[this.kind] }, person: this.person };
+  }
   reset(clearFrame = false) {
     if (clearFrame) this.frame = undefined;
     this.retargeter?.reset(); this.solve();

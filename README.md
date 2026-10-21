@@ -110,7 +110,30 @@ The server exposes the video library to that network without an additional login
 To remove the service permanently, stop it and remove
 `~/Library/LaunchAgents/local.pose-studio.plist`.
 
-## Python extraction
+## Beats, waveform and dance excerpts
+
+Run `npm run analyze:audio` to generate `<video filename>.analysis.json` beside
+each video in `videos/` (or `VIDEO_DIR`). Requires `uv` and FFmpeg. This runs
+Beat This! locally and precomputes the waveform, beat times, downbeats, complete
+bar boundaries and tempo. Matching sidecars are reused; `--force` regenerates.
+
+The viewer loads these files automatically. Use **Reload analysis** after an
+extraction, select a starting bar and **4 / 8 / 16 / 32 / 64 bars** or **Complete
+video**, audition the phrase with **Loop selection** (on by default),
+then **Extract & export animation JSON**. Export samples the selected range at
+30 FPS and includes baked Mixamo quaternion animation, source landmarks, timing,
+solver settings and tracking-quality counts. Browser-only videos support
+manually opening their sidecar JSON without uploading anything.
+
+Starting-bar and beat-offset **−/+** buttons let you move through the video and
+correct a misplaced downbeat. Offsets shift both ends and the displayed/exported
+bar boundaries by whole detected beats. Exports use animation JSON version 2;
+existing audio analysis files remain compatible.
+
+See [audio workflow and JSON formats](docs/audio-workflow.md) for the schema,
+commands, import example and limitations.
+
+## Python pose extraction
 
 The earlier offline extractor still works with the video's new location:
 
