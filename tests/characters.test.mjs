@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { AnimationClip, AnimationMixer, LoadingManager, Texture, Vector3, Quaternion, QuaternionKeyframeTrack, VectorKeyframeTrack } from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
-import { characterDefinition } from '../src/characters.ts';
+import { characterDefinition, registerCharacter } from '../src/characters.ts';
 import { characterRig, retargetAnimation } from '../src/character-animation.ts';
 import { MixamoRig, PoseRetargeter, canonicalPose, canonicalImage } from '../src/rig/solvers.ts';
 import { validateFbxPayload } from '../fbx-export-server.ts';
+
+registerCharacter({ id: 'neutral', name: 'Neutral', url: '/characters/neutral-low-poly.fbx', file: 'assets/characters/neutral-low-poly.fbx' });
 
 function loadCharacter(id) {
   const manager = new LoadingManager();
@@ -34,8 +36,9 @@ test('hand-built green FBX has a complete rig, rigid segments, green material an
     retargeter.reset();
   }
 });
-test('model retargeting preserves world rotation deltas, root travel and fractional duration', () => {
-  const source = loadCharacter('chicken'), target = loadCharacter('green-segments');
+for (const [from, to] of [['chicken', 'green-segments'], ['chicken', 'neutral'], ['neutral', 'chicken']])
+test(`model retargeting ${from} → ${to} preserves world rotations, root travel and duration`, () => {
+  const source = loadCharacter(from), target = loadCharacter(to);
   const sourceRig = characterRig(source), targetRig = characterRig(target);
   const hips = sourceRig.bones.find(b => b.name === 'mixamorigHips');
   const arm = sourceRig.bones.find(b => b.name === 'mixamorigLeftArm');
@@ -45,9 +48,16 @@ test('model retargeting preserves world rotation deltas, root travel and fractio
     new QuaternionKeyframeTrack(hips.name + '.quaternion', [0, .047], [...hips.quaternion, ...hips.quaternion]),
     new VectorKeyframeTrack(hips.name + '.position', [0, .047], [...hips.position, hips.position[0] + 50, hips.position[1] + 20, hips.position[2] - 10]),
   ]));
+  assert.equal(sourceRig.bones[0].name, 'mixamorigHips');
+  assert.equal(sourceRig.bones[0].parent, null);
+  assert(!sourceRig.bones.some(bone => bone.name === 'root'));
   const before = JSON.stringify(animation);
   const converted = retargetAnimation(animation, sourceRig, targetRig);
   assert.equal(converted.duration, .047); assert.equal(JSON.stringify(animation), before);
+  for (const bone of targetRig.bones.filter(bone => !sourceRig.bones.some(other => other.name === bone.name))) {
+    const track = converted.tracks.find(track => track.name === `${bone.name}.quaternion`);
+    for (let i = 0; i < track.values.length; i += 4) assert(new Quaternion().fromArray(track.values, i).normalize().angleTo(new Quaternion().fromArray(bone.quaternion).normalize()) < 1e-5);
+  }
   const originalPosition = source.getObjectByName(hips.name).getWorldPosition(new Vector3());
   const targetPosition = target.getObjectByName(hips.name).getWorldPosition(new Vector3());
   const restSource = source.getObjectByName(arm.name).getWorldQuaternion(new Quaternion());
@@ -67,25 +77,32 @@ test('model retargeting preserves world rotation deltas, root travel and fractio
   assert.throws(() => validateFbxPayload({ ...payload, character_id: '../../private' }), /Unknown character/);
 });
 
-test('saved GVHMR plays on both character models at video timestamps without audio or landmarks', async () => {
+for (const [file, boneCount, duration] of [['officialnickkosir_7696989498051202335.gvhmr.fbx', 65, 9.9], ['Real House Dancing.gvhmr.fbx', 52, 185.8856964111328]])
+test(`saved ${boneCount}-bone GVHMR plays on all characters without audio or landmarks`, async () => {
   const { loadRecordedMotion, disposeRecordedCharacter } = await import('../src/recorded-animation.ts');
   const { AnimationPlayback } = await import('../src/animation-playback.ts');
   const originalFetch = globalThis.fetch, originalWindow = globalThis.window;
-  const bytes = readFileSync(new URL('../videos/officialnickkosir_7696989498051202335.gvhmr.fbx', import.meta.url));
+  const bytes = readFileSync(new URL('../videos/' + file, import.meta.url));
   globalThis.window = { URL };
   let requests = 0;
   globalThis.fetch = async () => { requests++; return new Response(bytes); };
   const models = [], players = [];
   try {
-    const asset = { url: '/saved-motion-test', revision: '1' };
+    const asset = { url: '/saved-motion-test/' + file, revision: '1' };
     const motion = await loadRecordedMotion(asset, new AbortController().signal);
-    assert.equal(motion.rig.bones.length, 65);
-    assert.equal(motion.animation.tracks.length, 195);
-    assert(Math.abs(motion.animation.duration - 9.9) < 1e-5);
+    assert.equal(motion.rig.bones.length, boneCount);
+    assert.equal(motion.animation.tracks.length, boneCount * 3);
+    assert(Math.abs(motion.animation.duration - duration) < 1e-5);
+    validateFbxPayload({ schema: 'pose-studio.dance-animation', ...motion });
+    if (boneCount === 52) {
+      const reference = characterRig(loadCharacter('neutral'));
+      assert(new Vector3().fromArray(motion.rig.root_transform.scale).distanceTo(new Vector3().fromArray(reference.root_transform.scale)) < 1e-5, 'wrapper must not apply the Armature scale twice');
+      assert(new Quaternion().fromArray(motion.rig.root_transform.quaternion).angleTo(new Quaternion().fromArray(reference.root_transform.quaternion)) < 1e-5);
+    }
     const original = JSON.stringify(motion);
     const source = AnimationClip.parse(motion.animation).tracks.find(t => t.name === 'mixamorigHips.position').createInterpolant();
     const first = new Vector3().fromArray(source.evaluate(0));
-    for (const id of ['chicken', 'green-segments']) {
+    for (const id of ['chicken', 'green-segments', 'neutral']) {
       const model = loadCharacter(id); models.push(model);
       const player = new AnimationPlayback(model, retargetAnimation(motion.animation, motion.rig, characterRig(model))); players.push(player);
       player.playing = false;

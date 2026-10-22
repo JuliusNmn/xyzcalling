@@ -30,7 +30,9 @@ async function inspectFbx(file) {
   try {
     const bones = []; model.traverse(object => { if (object.isBone) bones.push(object.name); });
     const clip = model.animations.find(clip => clip.duration > 0 && clip.tracks.length);
-    if (bones.length !== 65 || !bones.includes('mixamorigHips') || !clip) throw new Error('Expected an animated 65-bone Mixamo FBX.');
+    const body = ['Hips', 'Spine', 'Spine1', 'Spine2', 'Neck', 'Head',
+      ...['Left', 'Right'].flatMap(side => ['Shoulder', 'Arm', 'ForeArm', 'Hand', 'UpLeg', 'Leg', 'Foot', 'ToeBase'].map(name => side + name))];
+    if (!body.every(name => bones.includes(`mixamorig${name}`)) || !clip) throw new Error('Expected an animated Mixamo body skeleton.');
     return clip.duration;
   } finally {
     model.traverse(object => {

@@ -6,6 +6,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import express from 'express';
 import { characterDefinition, DEFAULT_CHARACTER } from './src/characters.js';
+import { MIXAMO_BODY } from './src/mixamo-skeleton.js';
 
 const run = promisify(execFile);
 export function blenderExecutable() {
@@ -23,13 +24,15 @@ export function validateFbxPayload(data: any) {
   if (data?.schema !== 'pose-studio.dance-animation' || !Number.isFinite(duration) || duration <= 0 || duration > 600) fail();
   if (!quat(data?.rig?.root_transform?.quaternion) || !numbers(data?.rig?.root_transform?.position, 3) || !numbers(data?.rig?.root_transform?.scale, 3)) fail();
   const bones = data?.rig?.bones, tracks = data?.animation?.tracks;
-  if (!Array.isArray(bones) || bones.length !== 65 || !Array.isArray(tracks) || !tracks.length || tracks.length > 195) fail();
+  if (!Array.isArray(bones) || bones.length < MIXAMO_BODY.length || bones.length > 65 || !Array.isArray(tracks) || !tracks.length || tracks.length > bones.length * 3) fail();
   const names = new Set<string>();
   for (const b of bones) {
     if (typeof b?.name !== 'string' || !/^mixamorig[A-Za-z0-9_]+$/.test(b.name) || names.has(b.name) ||
       (b.parent !== null && !names.has(b.parent)) || !quat(b.quaternion) || !numbers(b.position, 3) || !numbers(b.scale, 3)) fail();
     names.add(b.name);
   }
+  if (MIXAMO_BODY.some(name => !names.has(name)) || bones[0].name !== 'mixamorigHips' ||
+      bones[0].parent !== null || bones.slice(1).some((bone: any) => bone.parent === null)) fail();
   const seen = new Set<string>();
   for (const t of tracks) {
     if (typeof t?.name !== 'string') fail();

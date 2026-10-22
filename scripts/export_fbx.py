@@ -51,7 +51,15 @@ def bake(data, character):
         rest[entry['name']] = parent @ quaternion(entry['quaternion'])
     blender_rest = {name: (rig.matrix_world @ b.matrix).to_quaternion() for name, b in bones.items()}
     blender_rest_positions = {name: (rig.matrix_world @ b.matrix).translation.copy() for name, b in bones.items()}
-    controlled = [entry for entry in skeleton if entry['name'] in tracks]
+    # Mixamo characters differ in optional fingers/end bones. Source-only tips
+    # need no target keys; target-only tips retain their local rest pose.
+    required = ['Hips', 'Spine', 'Spine1', 'Spine2', 'Neck', 'Head'] + [
+        side + name for side in ['Left', 'Right']
+        for name in ['Shoulder', 'Arm', 'ForeArm', 'Hand', 'UpLeg', 'Leg', 'Foot', 'ToeBase']]
+    missing = [name for name in required if name not in bones]
+    if missing:
+        raise ValueError(f'Missing Mixamo bones in target: {missing}')
+    controlled = [entry for entry in skeleton if entry['name'] in tracks and short(entry['name']) in bones]
     duration = data['animation']['duration']
     steps = max(1, math.ceil(duration * 30 - 1e-5))
     frame_step = duration * 30 / steps

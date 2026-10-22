@@ -1,7 +1,8 @@
-import { AnimationClip, LoadingManager, Texture, TextureLoader, Vector3, Quaternion, type Group, type SkinnedMesh, type Bone, type KeyframeTrack } from 'three';
+import { AnimationClip, LoadingManager, Texture, TextureLoader, type Group, type SkinnedMesh, type KeyframeTrack } from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { excerptRhythm, sampleTimes, selectionMetadata, type AudioAnalysis, type ClipSelection } from './audio-analysis';
 import type { DanceAnimation } from './animation-preview';
+import { characterRig, restoreBindPose } from './character-animation';
 
 export type RecordedAnimation = { kind: 'gvhmr'; url: string; duration: number; bytes: number; revision: string; heldOutroFrames: number | null };
 class EmptyTextureLoader extends TextureLoader { override load(url: string) { if (url.startsWith('blob:')) URL.revokeObjectURL(url); return new Texture<HTMLImageElement>(); } }
@@ -95,30 +96,24 @@ export async function loadRecordedMotion(asset: RecordedAnimation, signal: Abort
   const manager = new LoadingManager(); manager.addHandler(/.*/, new EmptyTextureLoader());
   try {
     character = new FBXLoader(manager).parse(bytes, '');
-    character.scale.multiplyScalar(.01); character.updateMatrixWorld(true);
     const clip = character.animations.find(clip => clip.duration > 0 && clip.tracks.length);
     if (!clip) throw new Error('The saved FBX contains no animation.');
     // Exported FBX defaults can be the final pose. Use the skin bind pose as the
     // rest reference for Blender conversion, never that animated default pose.
-    character.traverse(object => { if ((object as SkinnedMesh).isSkinnedMesh) (object as SkinnedMesh).skeleton.pose(); });
+    restoreBindPose(character);
+    character.scale.multiplyScalar(.01);
     character.updateMatrixWorld(true);
-    const bones: Bone[] = []; character.traverse(object => { if ((object as Bone).isBone) bones.push(object as Bone); });
-    const rootBone = bones.find(bone => !(bone.parent as Bone)?.isBone);
-    if (!rootBone?.parent || bones.length !== 65) throw new Error('Expected the saved Mixamo skeleton.');
-    const parent = rootBone.parent;
+    const rig = characterRig(character);
     // The exported Armature tracks are static. Fold them into the root transform;
     // refuse moving containers instead of silently losing their motion.
-    const names = new Set(bones.map(bone => bone.name));
+    const names = new Set(rig.bones.map(bone => bone.name));
     for (const track of clip.tracks.filter(track => !names.has(track.name.split('.')[0]))) {
       const size = track.getValueSize();
       if (!track.values.every((value, i) => Math.abs(value - track.values[i % size]) < .0001)) throw new Error('Animated FBX containers are not supported.');
     }
     return {
       animation: AnimationClip.toJSON(new AnimationClip(clip.name, clip.duration, clip.tracks.filter(track => names.has(track.name.split('.')[0])))),
-      rig: { name: 'Chicken Dance Mixamo', space: 'Three.js Y-up, bone-local transforms', in_place: false,
-        root_transform: { position: parent.getWorldPosition(new Vector3()).toArray(), quaternion: parent.getWorldQuaternion(new Quaternion()).toArray(), scale: parent.getWorldScale(new Vector3()).toArray() },
-        bones: bones.map(bone => ({ name: bone.name, parent: (bone.parent as Bone)?.isBone ? bone.parent!.name : null,
-          position: bone.position.toArray(), quaternion: bone.quaternion.toArray(), scale: bone.scale.toArray() })) },
+      rig: { ...rig, name: 'Saved Mixamo motion', in_place: false },
     };
   } catch (error) {
     console.error('[GVHMR] FBX parsing failed', { url: asset.url, bytes: bytes.byteLength }, error);

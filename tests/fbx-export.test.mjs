@@ -1,19 +1,22 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
+import { MIXAMO_BODY } from '../src/mixamo-skeleton.ts';
 import { validateFbxPayload, fbxRoutes } from '../fbx-export-server.ts';
 
 function fixture() {
   return { schema: 'pose-studio.dance-animation', rig: {
     root_transform: { quaternion: [0, 0, 0, 1], position: [0, 0, 0], scale: [1, 1, 1] },
-    bones: Array.from({ length: 65 }, (_, i) => ({ name: `mixamorigBone${i}`, parent: i ? `mixamorigBone${i - 1}` : null, quaternion: [0, 0, 0, 1], position: [0, 0, 0], scale: [1, 1, 1] })),
-  }, animation: { duration: 1, tracks: [{ name: 'mixamorigBone0.quaternion', type: 'quaternion', times: [0, 1], values: [0, 0, 0, 1, 0, 0, 0, 1] }] } };
+    bones: MIXAMO_BODY.map((name, i) => ({ name, parent: i ? MIXAMO_BODY[i - 1] : null, quaternion: [0, 0, 0, 1], position: [0, 0, 0], scale: [1, 1, 1] })),
+  }, animation: { duration: 1, tracks: [{ name: 'mixamorigHips.quaternion', type: 'quaternion', times: [0, 1], values: [0, 0, 0, 1, 0, 0, 0, 1] }] } };
 }
 
 test('FBX request rejects malformed timing, rotations and hierarchy before spawning Blender', () => {
   validateFbxPayload(fixture());
   for (const corrupt of [
     a => a.animation.duration = 601,
+    a => a.rig.bones.pop(),
+    a => a.rig.bones[1].parent = null,
     a => a.animation.tracks[0].times[1] = 0,
     a => a.animation.tracks[0].times[1] = .9,
     a => a.animation.tracks[0].values[0] = NaN,
@@ -41,11 +44,11 @@ test('FBX endpoint returns actionable validation errors', async () => {
 
 test('FBX accepts root travel but rejects unsupported animated bone lengths or scale', () => {
   const data = fixture();
-  const position = { name: 'mixamorigBone0.position', type: 'vector', times: [0, 1], values: [0, 0, 0, 100, 50, -20] };
+  const position = { name: 'mixamorigHips.position', type: 'vector', times: [0, 1], values: [0, 0, 0, 100, 50, -20] };
   data.animation.tracks.push(position);
   validateFbxPayload(data);
-  position.name = 'mixamorigBone1.position';
+  position.name = 'mixamorigSpine.position';
   assert.throws(() => validateFbxPayload(data), /Invalid FBX/);
-  position.name = 'mixamorigBone0.scale';
+  position.name = 'mixamorigHips.scale';
   assert.throws(() => validateFbxPayload(data), /Invalid FBX/);
 });
