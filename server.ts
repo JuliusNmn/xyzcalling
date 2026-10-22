@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { networkInterfaces } from 'node:os';
 import { recordedAnimation } from './recorded-animations-server.js';
+import { characterRoutes } from './characters-server.js';
 import { fbxRoutes } from './fbx-export-server.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -15,6 +16,7 @@ const extensions = new Set(['.mp4', '.webm', '.mov', '.m4v', '.ogv']);
 const app = express();
 app.disable('x-powered-by');
 app.use('/api/export/fbx', fbxRoutes(root));
+app.use('/api/characters', characterRoutes(root));
 
 async function videoFiles() {
   return (await readdir(videoDirectory, { withFileTypes: true }))
@@ -58,14 +60,23 @@ app.get('/api/videos/:name/analysis', async (request, response) => {
   }
 });
 
-app.get('/api/videos/:name/gvhmr', async (request, response) => {
+app.get('/api/videos/:name/gvhmr', async (request, response, next) => {
+  const started = Date.now();
   const name = request.params.name;
   const asset = (await videoFiles()).some(file => file.name === name) ? await recordedAnimation(videoDirectory, name) : undefined;
   if (!asset) {
     response.status(404).json({ error: 'No saved GVHMR animation for this video.' }); return;
   }
   response.setHeader('Cache-Control', 'no-cache');
-  response.sendFile(asset.filename, { root: videoDirectory, dotfiles: 'deny' });
+  response.sendFile(asset.filename, { root: videoDirectory, dotfiles: 'deny' }, error => {
+    const detail = { time: new Date().toISOString(), file: asset.filename, bytes: asset.bytes, range: request.headers.range,
+      milliseconds: Date.now() - started, status: response.statusCode };
+    if (error) {
+      console.error('[GVHMR] Transfer failed', detail, error);
+      if (!response.headersSent && !response.destroyed) next(error);
+      else if (!response.destroyed) response.destroy();
+    } else console.info('[GVHMR] Transfer complete', detail);
+  });
 });
 
 app.get('/videos/:name', async (request, response) => {

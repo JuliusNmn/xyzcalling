@@ -24,47 +24,29 @@ explicit error; silent audio produces a waveform and empty beat/bar arrays.
 
 ## Browser workflow
 
-1. Select a library video. The server loads its analysis sidecar automatically.
-   After running the extractor, press **Reload analysis**.
-2. Click the overview waveform, type a starting detected bar, or use its −/+
-   buttons. Choose 4, 8, 16, 32 or 64 bars, or **Complete video** to include the
-   entire media timeline, including the intro, ending and partial bars.
-3. Use **Beat offset** −/+ to correct a misplaced downbeat in whole-beat steps.
-   Positive values start later; negative values start earlier. Both endpoints
-   and all intervening bar boundaries shift by detected beat indices, preserving
-   the selected number of bars through tempo changes. The detail waveform shows
-   these adjusted boundaries. An offset cannot extend beyond detected beats or
-   the video. Full-video mode disables bar/offset controls.
-4. Use **Play selection** to check the alignment. **Loop selection** is enabled
-   by default and repeats the selected range; **Pause selection** stops playback.
-   Unchecking Loop makes playback stop at the end. Changing the selection during
-   auditioning restarts playback at the new beginning. Looping also works for
-   the complete video. Browser seeking can introduce a small gap at the seam.
-5. Optionally choose a solver, smoothing, visibility and person in **Character +
-   video**. Without opening that panel, export uses the custom solver defaults
-   and Person 1. The main detection confidence and maximum-people settings also
-   apply. People are indexed by detection order, not persistent identity.
-6. Press **Extract & preview animation** to sample this exact time interval at 30 FPS
-   using a separate video decoder and MediaPipe instance, then bakes bone-local
-   quaternion tracks. It doesn't depend on how much of the video was played.
-   Cancel is available, and changing videos cancels the operation. The resulting
-   textured character animation automatically loops in its own preview panel.
-7. Use **Pause loop**, **Restart**, the position scrubber, **Speed**, and the orbit
-   camera to inspect the baked motion and loop seam. Scrubbing pauses playback
-   and can display the exact final pose. Previewing does not run more inference.
-8. Choose **FBX** or **JSON** and press **Download animation**. Both use the exact
-   animation you previewed, with the original duration and one cycle. Changing
-   format, preview speed or camera does not require another extraction. Changing
-   source video, selected range, solver settings, person or detection settings
-   clears the preview and disables downloading until a new extraction completes.
+1. Choose a library video or open a local video. Full-video export works without
+   beat analysis. Choose **Animation** and **Character FBX**, then **Download FBX**.
+2. For a shorter range, open **Select a loop**. Enter start/end seconds, or use
+   detected bars and a beat offset when an audio analysis sidecar is available.
+   **Reload beats** refreshes that sidecar; **Open beat analysis** loads one locally.
+3. Use **Play selection** to audition the range on the main video timeline.
+   **Repeat** loops it. Choose **Use this loop**, then the same **Download FBX**
+   button. **Use full video** restores the complete duration, including the intro
+   and ending. Invalid ranges cannot be downloaded.
+4. The button prepares the animation and converts it to FBX with the selected
+   character. It also updates the matching column of the shared preview. Changing
+   characters reuses motion; changing range or source prepares a new extraction.
 
-For a browser-only local video, use **Open analysis JSON** to select the sidecar
-manually. Video and analysis files remain in the browser. FBX conversion sends
-only the rig and baked bone animation to your server; JSON export also stays
-entirely in the browser. Import checks
-filename, byte length, timing and schema; it does not rehash the video in the
-browser. Library sidecars additionally require matching source modification
-time, preventing use of stale analysis after a video changes.
+Exports use light smoothing with accent preservation. Smoothing controls are
+hidden; timing offsets and beat alignment are off. The preview and FBX share the
+processed animation. There is one video player, with MediaPipe markers and
+Custom/Kalidokit/GVHMR pose columns. Loop seams are not blended.
+
+For browser-only videos, video and analysis files remain in the browser. FBX
+conversion sends the rig and baked bone animation to the local server. Uploaded
+character FBXs are saved in the configured character directory. Analysis imports
+check filename, byte length, timing and schema. Server sidecars also check source
+modification time. Analysis is optional for both saved GVHMR and MediaPipe exports.
 
 ## Analysis JSON, version 1
 
@@ -106,10 +88,10 @@ remain version 1; they do not need regeneration. The animation wrapper advances
 to version 2 because full-video selections have nullable bar fields and exports
 can carry corrected downbeats. Three.js `animation` data remains unchanged.
 The download name includes the source video, bar numbers and any beat offset,
-or `complete-video`. The JSON contains:
+or `complete-video`. The internal animation data (used for FBX conversion) contains:
 
 - `source`: original fingerprint, source start/end seconds, `selection_mode`
-  (`bars` or `full`), first detected bar (one-based), exact bar count and signed
+  (`bars`, `range` or `full`), first detected bar (one-based), exact bar count and signed
   `beat_offset`. Full-video mode sets `first_detected_bar` and `bar_count` to
   null and `beat_offset` to zero; its range is `[0, video.duration]`.
 - `duration_seconds`, `sample_rate_hz: 30`, `timebase: "clip-seconds"`: sampling

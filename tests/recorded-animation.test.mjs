@@ -79,3 +79,21 @@ test('a short media-container tail holds the final pose without stretching motio
   assert(Math.abs(position.values[30 * 3] - 100) < 1e-5);
   assert.throws(() => excerptAnimation(original, { start: 0, end: 2.251 }), /does not cover/);
 });
+
+test('saved full video and manual loop exports work without an audio sidecar', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { extractRecordedAnimation } = await import('../src/recorded-animation.ts');
+  const bytes = await readFile(new URL('../videos/officialnickkosir_7696989498051202335.gvhmr.fbx', import.meta.url));
+  const originalFetch = globalThis.fetch, originalWindow = globalThis.window;
+  globalThis.window = { URL };
+  globalThis.fetch = async () => new Response(bytes);
+  try {
+    const source = { name: 'no-beats.mp4', bytes: 123, recordedAnimation: { url: '/no-audio-fixture', revision: '1' } };
+    for (const selection of [{ kind: 'full', start: 0, end: 9.9 }, { kind: 'range', start: .53, end: 1.577 }]) {
+      const data = await extractRecordedAnimation(source, selection, undefined, new AbortController().signal);
+      assert.equal(data.rhythm, null); assert.equal(data.source.name, source.name);
+      assert.equal(data.source.start_seconds, selection.start);
+      assert(Math.abs(data.duration_seconds - (selection.end - selection.start)) < 1e-5);
+    }
+  } finally { globalThis.fetch = originalFetch; globalThis.window = originalWindow; }
+});

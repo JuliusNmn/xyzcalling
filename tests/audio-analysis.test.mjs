@@ -91,3 +91,17 @@ test('sampling retains exact closing boundary without duplicate keys', () => {
   }
   assert.throws(() => sampleTimes(Infinity));
 });
+
+test('manual loops validate video bounds and retain exact endpoints without beat analysis', async () => {
+  const { selectRange } = await import('../src/audio-analysis.ts');
+  const selection = selectRange(.53, 1.577, 2);
+  assert.deepEqual(selection, { kind: 'range', start: .53, end: 1.577 });
+  assert.equal(selectionMetadata(selection).selection_mode, 'range');
+  assert.equal(selectionFileSuffix(selection), 'loop-0.530-1.577s');
+  for (const [start, end, duration] of [[-1, 1, 2], [1, 1, 2], [1, 3, 2], [NaN, 1, 2], [0, Infinity, 2]]) {
+    assert.equal(selectRange(start, end, duration), undefined);
+  }
+  const rhythm = excerptRhythm(fixture(), selectRange(2, 10, 251));
+  assert(rhythm.beats_seconds.every(time => time >= 0 && time < 8));
+  assert(rhythm.bars.every(bar => bar.start_seconds >= 0 && bar.end_seconds <= 8));
+});

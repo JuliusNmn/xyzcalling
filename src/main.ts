@@ -2,7 +2,6 @@ import { FilesetResolver, PoseLandmarker, type PoseLandmarkerResult, type Normal
 import './style.css';
 import type { CharacterView } from './character-view';
 import { AudioTimeline } from './audio-timeline';
-import { MotionPanel } from './motion-panel';
 import { DEFAULT_SETTINGS } from './rig/solvers';
 
 type VideoEntry = { name: string; title: string; url: string; bytes: number; browserOnly?: boolean; analysisUrl?: string; recordedAnimation?: import('./recorded-animation').RecordedAnimation };
@@ -22,8 +21,6 @@ const icon = (name: string) => {
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <aside class="sidebar">
     <a class="brand" href="/"> <span class="brand-icon">${icon('pose')}</span> Pose Studio <span class="version">01</span></a>
-    <div class="workspace-label">WORKSPACE</div>
-    <div class="nav-active">${icon('pose')} Pose landmarker <span class="nav-dot"></span></div>
     <div class="library-heading"><h2>Video library</h2><button id="refresh" class="icon-button" title="Refresh video library" aria-label="Refresh video library">${icon('refresh')}</button></div>
     <p class="library-help">Your files. Ready to explore.</p>
     <button id="open-local" class="secondary-button local-video-button">${icon('folder')} Open local video</button>
@@ -34,25 +31,24 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <div class="sidebar-footer"><span class="online-dot"></span> Private workspace <span>LOCAL</span></div>
   </aside>
   <main>
-    <header><div class="breadcrumb">Vision lab <span>/</span> <strong>Pose landmarker</strong></div><a href="https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker" target="_blank" rel="noreferrer">Model documentation ↗</a></header>
-    <section class="page-heading"><div><div class="eyebrow">MOVEMENT, MAPPED.</div><h1>Every move tells a story.</h1><p>Explore body movement with real-time pose landmarks.</p></div><span class="model-chip"><span class="online-dot"></span> MediaPipe · Full model</span></section>
+    <header><div class="breadcrumb">Pose Studio <span>/</span> <strong>Video to FBX</strong></div><span>Local workspace</span></header>
+    <section class="page-heading"><div><h1>Turn video into motion.</h1><p>Choose a video and character. Download the full animation, or select a loop.</p></div></section>
     <div id="error" class="error-banner" role="alert" hidden></div>
+    <section id="audio-timeline" class="audio-timeline export-workflow" aria-label="Animation export"></section>
     <section class="workspace">
       <div class="viewer-column">
-        <div class="view-switch" aria-label="Preview view"><button id="view-video" aria-pressed="true">Video</button><button id="view-character" aria-pressed="false">Character + video</button><button id="view-compare" aria-pressed="false">Compare solvers</button><span>Inspect the motion from every angle</span></div>
-        <div id="preview-grid" class="preview-grid">
+        <div id="preview-grid" class="preview-grid unified-preview">
         <div class="viewer-panel">
-          <div class="viewer-toolbar"><div><span class="live-dot"></span><strong>Video preview</strong><span id="resolution" class="muted">—</span></div><span id="overlay-state">LANDMARK OVERLAY</span></div>
+          <div class="viewer-toolbar"><div><span class="live-dot"></span><strong>MediaPipe markers</strong><span id="resolution" class="muted">—</span></div><span id="overlay-state">LANDMARK OVERLAY</span></div>
           <div class="stage" id="stage"><video id="video" controls playsinline preload="auto"></video><canvas id="overlay" aria-label="Detected pose markers"></canvas><div id="empty-state">${icon('film')}<h2>Select a video to begin</h2><p>Choose a file from your video library.</p></div></div>
           <div class="video-caption"><div><span class="tiny-label">NOW EXPLORING</span><h2 id="video-title">No video selected</h2></div><label class="speed-label">Speed <select id="speed" aria-label="Playback speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label></div>
         </div>
-        <div id="character-preview" class="viewer-panel character-panel" hidden></div>
+        <div id="character-preview" class="viewer-panel character-panel"></div>
         </div>
-        <div class="stats"><div><span>Detected poses</span><strong id="poses">—</strong><small>people in frame</small></div><div><span>Visible landmarks</span><strong id="landmarks">—</strong><small>33 points per pose</small></div><div><span>Inference time</span><strong id="latency">—</strong><small>milliseconds / frame</small></div><div><span>Tracking rate</span><strong id="fps">—</strong><small>frames / second</small></div></div>
-        <section id="audio-timeline" class="audio-timeline" aria-label="Audio analysis and dance extraction"></section>
-        <section id="motion-panel" class="audio-timeline motion-panel" aria-label="Motion metrics and TouchDesigner export"></section>
+        <div class="stats" hidden><div><span>Detected poses</span><strong id="poses">—</strong><small>people in frame</small></div><div><span>Visible landmarks</span><strong id="landmarks">—</strong><small>33 points per pose</small></div><div><span>Inference time</span><strong id="latency">—</strong><small>milliseconds / frame</small></div><div><span>Tracking rate</span><strong id="fps">—</strong><small>frames / second</small></div></div>
+
       </div>
-      <aside class="controls-panel">
+      <aside class="controls-panel" hidden>
         <div class="panel-heading"><h2>Tracking controls</h2><span class="small-tag">LIVE</span></div>
         <div class="model-status"><span id="status-dot" class="status-dot loading"></span><div><strong id="status" role="status">Loading pose model…</strong><small id="status-detail">Preparing the local runtime</small></div><button id="retry" class="icon-button" aria-label="Retry model loading" hidden>${icon('refresh')}</button></div>
         <div id="character-controls" class="control-section" hidden></div>
@@ -67,6 +63,9 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   </main>`;
 
 const element = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+const trackingStatus = document.createElement('div'); trackingStatus.className = 'tracking-status';
+trackingStatus.append(element('status-dot'), element('status'), element('status-detail'), element('retry'));
+element('preview-grid').after(trackingStatus);
 const video = element<HTMLVideoElement>('video');
 const canvas = element<HTMLCanvasElement>('overlay');
 const context = canvas.getContext('2d')!;
@@ -87,22 +86,18 @@ let initializing: Promise<void> | undefined;
 let configTimer: ReturnType<typeof setTimeout>;
 let characterView: CharacterView | undefined;
 let characterLoading = false;
-let previewMode: 'video' | 'character' | 'compare' = 'video';
 let extractingAnimation = false;
-let motionPanel: MotionPanel;
 const extractionConfig = () => ({
   ...(characterView?.exportSettings() ?? { solver: 'custom' as const, settings: { ...DEFAULT_SETTINGS.custom }, person: 0 }),
   numPoses: settings().numPoses, confidence: settings().minPoseDetectionConfidence,
 });
 function extractionBusy(busy: boolean) {
-  extractingAnimation = busy; audioTimeline.setBusy(busy); motionPanel?.setBusy(busy);
+  extractingAnimation = busy; audioTimeline.setBusy(busy);
 }
 const audioTimeline = new AudioTimeline(element('audio-timeline'), video, extractionBusy, extractionConfig,
-  () => motionPanel?.refreshSelection(), () => motionPanel?.processingChanged(), id => characterView?.setCharacter(id));
-motionPanel = new MotionPanel(element('motion-panel'), video, () => audioTimeline.getSelection(), () => audioTimeline.getLandmarkConfig(), extractionBusy, {
-  getSettings: () => audioTimeline.getProcessingSettings(), setSettings: options => audioTimeline.setProcessingSettings(options),
-  getAnalysis: () => audioTimeline.getAnalysis(),
-});
+  id => characterView?.setCharacter(id), source => characterView?.setAnimationSource(source),
+  data => characterView?.setPreparedAnimation(data));
+
 
 function error(message: string) {
   element('error').textContent = message;
@@ -267,8 +262,8 @@ function selectVideo(entry: VideoEntry) {
     ? 'Processed on this device.<br>Your local video is never uploaded.'
     : 'Processed in your browser.<br>Your video stays on your network.';
   video.src = entry.url; video.load();
+  characterView?.setRecordedAnimation(entry.recordedAnimation);
   void audioTimeline.setSource(entry);
-  motionPanel.setSource(entry);
   renderLibrary();
   // A fresh graph avoids carrying tracking state from a previous video.
   if (model) void loadModel();
@@ -300,13 +295,14 @@ async function refreshLibrary() {
     if (!existing && (browserVideo || videos.length)) selectVideo(browserVideo || videos[0]);
     else if (!existing && !videos.length) {
       selected = undefined; video.pause(); video.removeAttribute('src'); video.load(); clearResults();
-      void audioTimeline.setSource(); motionPanel.setSource();
+      characterView?.setRecordedAnimation();
+      void audioTimeline.setSource();
       element('empty-state').hidden = false; element('video-title').textContent = 'No video selected';
     }
     if (selected && !selected.browserOnly) {
       const fresh = videos.find(entry => entry.url === selected?.url);
       if (fresh && JSON.stringify(fresh.recordedAnimation) !== JSON.stringify(selected.recordedAnimation)) {
-        selected = fresh; void audioTimeline.setSource(fresh);
+        selected = fresh; characterView?.setRecordedAnimation(fresh.recordedAnimation); void audioTimeline.setSource(fresh);
       }
     }
     renderLibrary();
@@ -326,37 +322,26 @@ window.addEventListener('pagehide', event => {
   if (!event.persisted && browserVideo) URL.revokeObjectURL(browserVideo.url);
   if (!event.persisted) characterView?.dispose();
   if (!event.persisted) audioTimeline.dispose();
-  if (!event.persisted) motionPanel.dispose();
 });
-async function setView(mode: typeof previewMode) {
-  previewMode = mode;
-  const character = mode !== 'video';
-  element('preview-grid').classList.toggle('compare-solvers', mode === 'compare');
-  element('preview-grid').classList.toggle('show-character', character);
-  element('character-preview').hidden = !character;
-  element('character-controls').hidden = !character;
-  element('view-video').setAttribute('aria-pressed', String(!character));
-  element('view-character').setAttribute('aria-pressed', String(mode === 'character'));
-  element('view-compare').setAttribute('aria-pressed', String(mode === 'compare'));
-  if (character && !characterView && !characterLoading) {
-    characterLoading = true;
-    element('character-preview').textContent = 'Preparing 3D view…';
-    try {
-      const { CharacterView } = await import('./character-view');
-      characterView = new CharacterView(element('character-preview'), element('character-controls'), audioTimeline.getCharacter(), id => {
-        void audioTimeline.setCharacter(id).then(() => characterView?.setCharacter(audioTimeline.getCharacter()));
-      });
-      if (latest) characterView.update(latest.worldLandmarks, latest.landmarks, latestMediaTime);
-    } catch (reason) {
-      element('character-preview').textContent = `3D view unavailable: ${String(reason)}. Switch to Video and try again.`;
-    } finally { characterLoading = false; }
-  }
-  characterView?.setComparison(previewMode === 'compare');
-  characterView?.setVisible(previewMode !== 'video');
+async function initializePreview() {
+  if (characterView || characterLoading) return;
+  characterLoading = true;
+  element('character-preview').textContent = 'Preparing pose preview…';
+  try {
+    const { CharacterView } = await import('./character-view');
+    characterView = new CharacterView(element('character-preview'), element('character-controls'), audioTimeline.getCharacter(),
+      id => { void audioTimeline.setCharacter(id); }, () => video.currentTime,
+      source => audioTimeline.setAnimationSource(source));
+    characterView.setRecordedAnimation(selected?.recordedAnimation);
+    characterView.setAnimationSource(audioTimeline.getAnimationSource());
+    characterView.setComparison(true);
+    if (latest) characterView.update(latest.worldLandmarks, latest.landmarks, latestMediaTime);
+  } catch (reason) {
+    element('character-preview').textContent = `Pose preview unavailable: ${String(reason)}`;
+    const retry = document.createElement('button'); retry.className = 'secondary-button'; retry.textContent = 'Retry preview';
+    retry.addEventListener('click', () => void initializePreview()); element('character-preview').append(retry);
+  } finally { characterLoading = false; }
 }
-element('view-video').addEventListener('click', () => void setView('video'));
-element('view-character').addEventListener('click', () => void setView('character'));
-element('view-compare').addEventListener('click', () => void setView('compare'));
 element('retry').addEventListener('click', () => void loadModel());
 element('speed').addEventListener('change', () => { video.playbackRate = Number(element<HTMLSelectElement>('speed').value); });
 video.addEventListener('loadedmetadata', () => {
@@ -400,4 +385,5 @@ element('export').addEventListener('click', () => {
 
 void refreshLibrary();
 void loadModel();
+void initializePreview();
 requestAnimationFrame(infer);

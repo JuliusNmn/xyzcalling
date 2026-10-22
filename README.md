@@ -4,10 +4,10 @@ Related hackathon work lives in [`amsterdam-hackathon/`](amsterdam-hackathon/HAN
 The dashboard uses its Mixamo character and ports its custom retargeting solver
 to the browser. TouchDesigner, djay OSC and the offline tools remain separate.
 
-A TypeScript dashboard for MediaPipe Pose Landmarker, with a local video library,
-live skeleton/landmark overlays, playback and confidence controls, and JSON export
-of the current frame. MediaPipe's full model, JavaScript, and WASM are served
-locally. Inference runs in the viewer's browser; no external inference service is used.
+A local video-to-FBX workspace. Select a video, choose or upload a Mixamo character,
+and download the full animation. An optional loop popover selects a shorter range.
+One preview combines MediaPipe markers, Custom, Kalidokit and saved GVHMR motion.
+MediaPipe's model, JavaScript and WASM are served locally; inference runs in the browser.
 
 ## Run
 
@@ -51,18 +51,23 @@ Processing frames are downscaled to at most 960 pixels wide, with a maximum of
 GPU inference is preferred, with CPU fallback. The model resets after seeking
 or switching videos. Landmarks use normalized image coordinates; world landmarks
 are in meters relative to the hip midpoint. Pose array indices are not stable IDs.
-The minimum visibility slider only filters the overlay. Export captures the most
-recent analyzed frame and includes its video timestamp.
+Tracking uses the default confidence and visibility thresholds; advanced tracking
+and smoothing controls are hidden from the export workflow.
 
 ## Character preview and solvers
 
-Choose **Character + video** to preview a rig, or use **Character model** in
-**Extracted animation** to choose the character for preview and FBX downloads.
-The selectors stay in sync. Available models are the original **Chicken Dance ·
-Mixamo** and **Green Segments · Low poly**, a hand-built green figure with separate,
-flat-shaded segments inspired by the supplied reference. Switching characters
-reuses extracted motion, including saved GVHMR clips, without scanning the video
-again. Drag to orbit, scroll to zoom, or use **Reset camera**.
+The shared preview shows the marked video and three pose columns: **Custom**,
+**Kalidokit** and **GVHMR**. All follow the main video's playback, seeking and
+speed. GVHMR requires a saved extraction; its column explains when none exists.
+After a download is prepared, that source's column displays the processed motion.
+Drag to orbit, scroll to zoom, or use **Reset camera**.
+
+Choose **Character FBX** for both preview and export. Built-in models are **Chicken
+Dance · Mixamo** and **Green Segments · Low poly**. Additional FBXs are discovered
+in `assets/characters/` (or `CHARACTER_DIR`); use **Refresh models** after adding files.
+**Upload FBX** validates a Mixamo body rig and saves the character in that directory
+(maximum 100 MB). Use embedded textures for self-contained uploads. Arbitrary rigs
+are not supported. Character changes reuse the extracted motion.
 
 The new asset is `assets/characters/green-segments.fbx` (432 authored vertices,
 352 polygon faces, 65 bones; no bundled animation). Its geometry is manually
@@ -79,40 +84,13 @@ IDs and loads only catalog paths. Preview retargeting accounts for each FBX's re
 axes and preserves root travel. JSON retains the source rig/motion and records the
 chosen `character_id`; FBX contains the selected model with that motion baked in.
 
-Choose **Compare solvers** to see Custom and Kalidokit side by side, with the
-source video below. Both use the same detected person and video frame, with
-independent rigs and smoothing history. Orbit and zoom are linked for comparison.
-Use **Configure / export solver** to choose whose settings to edit (and whose
-motion to use for dance exports); both characters remain visible. Changing this
-selector in comparison mode preserves both solvers' motion history. The skeleton
-toggle, person selector and camera reset apply to both previews.
-
-The **Inverse kinematics** selector switches between:
-
-- **Custom · rest-aware**: browser port of `mocap/blender_retarget.py`. Fits the
-  hips and spine to torso bases, then swings the arms, legs and feet toward
-  landmark directions using the FBX's actual rest axes (14 controlled bones).
-- **Kalidokit · 1.1.5**: `Pose.solve` with neutral-pose calibration, anatomical
-  side mapping and rotation conversion into this Mixamo rig (12 controlled
-  bones). Feet inherit leg motion. This is an adapter for the supplied rig,
-  not a general-purpose retargeter for arbitrary FBX files.
-
-Both have independent **Rotation smoothing**, **Tracking visibility** and
-**Track legs** settings, retained when switching solvers during the session.
-Smoothing uses quaternion interpolation compensated for the video frame interval:
-0% is immediate; higher values reduce jitter with more lag. The custom default
-is 40% retention (equivalent to the pilot's 0.6 interpolation at 30 FPS);
-Kalidokit defaults to 65%. Seeking, changing video/person or switching solvers
-resets the filter so motion does not blend across unrelated frames.
-
-Low-confidence joints hold their previous local rotations. **Show character
-skeleton** exposes the parsed rig, and **Detected person** chooses a MediaPipe
-pose array entry (increase **Maximum people** to detect more people).
-All solving remains in the browser, including for browser-only local videos.
-
-This is an in-place body preview and exporter: no root translation, foot locking,
-hand/finger or face animation. Monocular depth ambiguity,
-occlusion and missed detections can still produce incorrect poses or foot sliding.
+The **Animation** selector chooses the export source. GVHMR is selected when a
+saved animation exists and preserves root movement. Custom and Kalidokit extract
+MediaPipe poses at 30 FPS, with in-place body motion. Live previews use their
+existing smoothing defaults; exports use light centered smoothing with accent
+preservation, zero timing offset and no beat alignment. Smoothing controls are hidden.
+Low-confidence joints hold their previous pose. Monocular depth, occlusion and
+missed detections can still produce incorrect poses or foot sliding.
 
 Run `npm test` for solver checks against the actual FBX: custom direction fitting,
 Kalidokit neutral/side mapping, smoothing, bone-length preservation, confidence
@@ -147,81 +125,26 @@ each video in `videos/` (or `VIDEO_DIR`). Requires `uv` and FFmpeg. This runs
 Beat This! locally and precomputes the waveform, beat times, downbeats, complete
 bar boundaries and tempo. Matching sidecars are reused; `--force` regenerates.
 
-The viewer loads these files automatically. Use **Reload analysis** after an
-extraction, select a starting bar and **4 / 8 / 16 / 32 / 64 bars** or **Complete
-video**, audition the phrase with **Loop selection** (on by default),
-then press **Extract & preview animation**. Extraction samples the selected range
-at 30 FPS and opens a textured 3D loop preview. Pause, restart, scrub to any pose,
-change preview speed, or drag to orbit before choosing **FBX** or **JSON** and
-pressing **Download animation**. Downloads reuse the previewed animation without
-repeating pose inference. Changing the video, selection or tracking/solver settings
-clears the preview and requires a new extraction. Preview speed only affects
-playback; downloads retain the original duration and contain one cycle.
+Full-video export does not require audio analysis. Select a video and character,
+then press **Download FBX**. The same button extracts and downloads the motion;
+there is no separate extraction step or second video player.
 
-### Offline animation controls
-
-The extraction panel has **Off / Light / Balanced / Strong** smoothing,
-**Preserve fast accents**, a **Motion timing** adjustment (−250 to +250 ms;
-positive moves motion earlier), and optional **Align accents to beats**.
-Light smoothing and accent preservation are the defaults; timing and beat
-alignment start at zero. These options affect the extracted animation and its
-FBX/JSON downloads, not the live character viewer. The motion-signal panel can use the same settings in Smoothed mode, or retain the original data in Raw mode.
-
-Extraction uses independent MediaPipe image inference and disables the solver's
-recursive rotation smoothing. The raw animation and landmarks are kept in memory
-for the current selection. Adjusting any processing control reuses that extraction;
-it does not load the model or scan video frames again. Changing the source, range,
-solver, person or detection/visibility/leg settings requires a fresh extraction.
-Changing the live rotation-smoothing slider does not invalidate the offline cache.
-The shared cache keeps the most recent extraction until a different range/tracking configuration is extracted or the page reloads. Animation and motion-signal extraction reuse it when their range and tracking configuration match.
-
-Smoothing is a centered, hemisphere-correct quaternion average over 5, 7 or 11
-samples at 30 Hz. Accent preservation reduces smoothing during fast rotations.
-This removes the recursive filter's trailing response, but strong smoothing can
-still soften gestures and inference/occlusion errors can remain. Clip edges use
-available neighbors; the loop seam is not blended. Timing offsets hold the nearest
-pose at the ends rather than wrapping across the seam.
-
-Beat alignment detects peaks in whole-body angular speed and moves nearby peaks
-partway toward detected beats (up to 80 ms at full strength). All bones use one
-monotonic time map, with bounded speed changes and fixed endpoints before any
-manual timing offset. This is an optional creative adjustment, not a measurement
-of tracking latency. It can alter the dancer's original groove. No beat data means
-alignment is disabled. JSON includes the processing settings and timing anchors;
-its source landmarks and rhythm remain at their original timestamps.
-
-The extracted preview displays its own source-video player alongside the character.
-**Sync with source video** uses that video's clock for animation playback, including
-scrubbing, speed changes and looping. **Unsmoothed comparison** shows the cached raw
-animation; downloads always use the processed version. Turn sync off to play the
-animation on its own. None of these controls change the main live video preview.
-
-FBX includes the selected skinned character and its materials with the selected solver's animation; JSON includes quaternion animation,
-source landmarks, timing, solver settings and tracking-quality counts. Browser-only videos support
-manually opening their sidecar JSON without uploading anything.
+For an excerpt, open **Select a loop**, enter start/end seconds, or choose detected
+bars when analysis is available. **Play selection** auditions the range in the
+shared preview; **Repeat** loops playback. Press **Use this loop**, then the same
+**Download FBX** button. **Use full video** restores the full duration. Loop seams
+are not blended automatically. Use **Reload beats** after regenerating an analysis
+sidecar, or **Open beat analysis** for a browser-only local video.
 
 FBX conversion requires Blender on the server (`/Applications/Blender.app` on
-macOS, `blender` on PATH elsewhere, or set `BLENDER_BIN` to its executable).
-Only the skeleton and baked rotation tracks are sent to the server; the source
-video and detected landmarks stay in the browser. Temporary conversion files
-are removed after download or cancellation. FBX selections are limited to ten
-minutes. JSON export remains entirely in the browser.
-Loop previews also run entirely in the browser and work without Blender. The
-loop seam is shown without blending; this feature does not make clips seamless.
+macOS, `blender` on PATH elsewhere, or `BLENDER_BIN`). The selected character and
+baked animation are exported together. Only rig and bone tracks go to the server;
+source video and detected landmarks remain in the browser. Conversion files are
+removed after download or cancellation. Exports are limited to ten minutes.
 
-Run `npm run test:fbx` for a complete render → MediaPipe full → browser solver →
-HTTP FBX export → reimport/render comparison. Requires Blender, FFmpeg, `uv`, and
-the model installed by `npm run setup`. Outputs go to an ignored `artifacts/`
-directory. See [FBX validation results](docs/fbx-validation.md) for measured
-export fidelity and the remaining motion-reconstruction error.
-
-Starting-bar and beat-offset **−/+** buttons let you move through the video and
-correct a misplaced downbeat. Offsets shift both ends and the displayed/exported
-bar boundaries by whole detected beats. Exports use animation JSON version 2;
-existing audio analysis files remain compatible.
-
-See [audio workflow and JSON formats](docs/audio-workflow.md) for the schema,
-commands, import example and limitations.
+Run `npm run test:fbx` for the full extraction/export validation pipeline; see
+[FBX validation](docs/fbx-validation.md). See [audio workflow and JSON formats](docs/audio-workflow.md)
+for the underlying analysis and animation formats.
 
 ## Python pose extraction
 
@@ -252,4 +175,6 @@ Reference: [MediaPipe Pose Landmarker for Web](https://ai.google.dev/edge/mediap
 
 ### Motion signals for TouchDesigner
 
-The **Motion Signals** panel adds 20 derived channels with synchronized timeline graphs: body/hand/foot speeds, movement acceleration, hand/foot separation, hand/foot heights, elbow/knee angles, torso lean/twist and arm reach. Analyze the selected bar loop or the complete video, then download a native binary **.bclip** with named channels at 30 Hz, validity flags and optional 33-joint positions. Full-video analysis also works without an audio sidecar. See [the metric definitions, coordinate conventions and TouchDesigner workflow](docs/motion-metrics.md).
+The motion metric and BCLIP modules remain available in the source but are no
+longer mounted in the simplified browser workflow. See [metric definitions and
+TouchDesigner notes](docs/motion-metrics.md) for their data format.

@@ -1,0 +1,13 @@
+{
+  "file": "Real House Dancing [VJxjxXA3dCw].mp4",
+  "fbx_file": "Real House Dancing.gvhmr.fbx",
+  "duration": 185.8523712158203,
+  "video_duration": 185.968617,
+  "sha256": "f026f41aefda8df156e2db6eb4a694e10a43530a7e1aa2737da7b4feace2ab02",
+  "bytes": 17690163,
+  "imported_at": "2026-10-21T22:29:33.915Z",
+  "origin": "imported-fbx",
+  "matching": "Unique normalized title and full animation duration (within 250 ms).",
+  "held_black_outro_frames": null,
+  "note": "Imported FBX only. Original inference metadata and per-frame confidence were not supplied."
+}

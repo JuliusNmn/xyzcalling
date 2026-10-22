@@ -66,3 +66,46 @@ test('model retargeting preserves world rotation deltas, root travel and fractio
   validateFbxPayload(payload);
   assert.throws(() => validateFbxPayload({ ...payload, character_id: '../../private' }), /Unknown character/);
 });
+
+test('saved GVHMR plays on both character models at video timestamps without audio or landmarks', async () => {
+  const { loadRecordedMotion, disposeRecordedCharacter } = await import('../src/recorded-animation.ts');
+  const { AnimationPlayback } = await import('../src/animation-playback.ts');
+  const originalFetch = globalThis.fetch, originalWindow = globalThis.window;
+  const bytes = readFileSync(new URL('../videos/officialnickkosir_7696989498051202335.gvhmr.fbx', import.meta.url));
+  globalThis.window = { URL };
+  let requests = 0;
+  globalThis.fetch = async () => { requests++; return new Response(bytes); };
+  const models = [], players = [];
+  try {
+    const asset = { url: '/saved-motion-test', revision: '1' };
+    const motion = await loadRecordedMotion(asset, new AbortController().signal);
+    assert.equal(motion.rig.bones.length, 65);
+    assert.equal(motion.animation.tracks.length, 195);
+    assert(Math.abs(motion.animation.duration - 9.9) < 1e-5);
+    const original = JSON.stringify(motion);
+    const source = AnimationClip.parse(motion.animation).tracks.find(t => t.name === 'mixamorigHips.position').createInterpolant();
+    const first = new Vector3().fromArray(source.evaluate(0));
+    for (const id of ['chicken', 'green-segments']) {
+      const model = loadCharacter(id); models.push(model);
+      const player = new AnimationPlayback(model, retargetAnimation(motion.animation, motion.rig, characterRig(model))); players.push(player);
+      player.playing = false;
+      const root = model.getObjectByName('mixamorigHips'), start = root.getWorldPosition(new Vector3());
+      // Forward, backward, repeat, and a video-container tail past the last key.
+      for (const time of [2, 6, .5, .5, 9.91, 0]) {
+        player.seek(time); model.updateMatrixWorld(true);
+        const expected = new Vector3().fromArray(source.evaluate(Math.min(time, motion.animation.duration))).sub(first)
+          .multiply(new Vector3().fromArray(motion.rig.root_transform.scale))
+          .applyQuaternion(new Quaternion().fromArray(motion.rig.root_transform.quaternion));
+        assert(root.getWorldPosition(new Vector3()).sub(start).distanceTo(expected) < 1e-5);
+      }
+    }
+    await loadRecordedMotion(asset, new AbortController().signal);
+    assert.equal(requests, 1, 'both previews reuse the downloaded FBX');
+    assert.equal(JSON.stringify(motion), original);
+    const abort = new AbortController(); abort.abort();
+    await assert.rejects(loadRecordedMotion(asset, abort.signal), { name: 'AbortError' });
+  } finally {
+    players.forEach(player => player.dispose()); models.forEach(disposeRecordedCharacter);
+    globalThis.fetch = originalFetch; globalThis.window = originalWindow;
+  }
+});

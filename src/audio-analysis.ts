@@ -11,7 +11,7 @@ export type AudioAnalysis = {
 };
 export const BAR_COUNTS = [4, 8, 16, 32, 64] as const;
 export type BarSelection = { kind: 'bars'; firstBar: number; count: number; beatOffset: number; start: number; end: number };
-export type ClipSelection = BarSelection | { kind: 'full'; start: number; end: number };
+export type ClipSelection = BarSelection | { kind: 'full'; start: number; end: number } | { kind: 'range'; start: number; end: number };
 
 export function parseAnalysis(value: unknown, source: { name: string; bytes: number }): AudioAnalysis {
   const a = value as AudioAnalysis;
@@ -55,9 +55,14 @@ export function selectFullVideo(duration: number): ClipSelection | undefined {
   return { kind: 'full', start: 0, end: duration };
 }
 
+export function selectRange(start: number, end: number, duration: number): ClipSelection | undefined {
+  if (![start, end, duration].every(Number.isFinite) || start < 0 || end <= start || end > duration) return;
+  return { kind: 'range', start, end };
+}
+
 /** Bar boundaries move by beat indices, preserving tempo changes and meter. */
 export function selectedBars(a: AudioAnalysis, selection: ClipSelection): Bar[] {
-  if (selection.kind === 'full') return a.bars.filter(bar => bar.start_seconds >= selection.start && bar.end_seconds <= selection.end);
+  if (selection.kind !== 'bars') return a.bars.filter(bar => bar.start_seconds >= selection.start && bar.end_seconds <= selection.end);
   return a.bars.slice(selection.firstBar, selection.firstBar + selection.count).map(bar => {
     const start = bar.start_beat_index + selection.beatOffset, end = bar.end_beat_index + selection.beatOffset;
     return { ...bar, start_beat_index: start, end_beat_index: end, start_seconds: a.beats_seconds[start], end_seconds: a.beats_seconds[end],
@@ -65,7 +70,7 @@ export function selectedBars(a: AudioAnalysis, selection: ClipSelection): Bar[] 
   });
 }
 
-export function selectionLabel(s: ClipSelection): string { return s.kind === 'full' ? 'Complete video' : `${s.count} bars`; }
+export function selectionLabel(s: ClipSelection): string { return s.kind === 'full' ? 'Complete video' : s.kind === 'range' ? 'Selected loop' : `${s.count} bars`; }
 
 export function selectionMetadata(s: ClipSelection) {
   return { start_seconds: s.start, end_seconds: s.end, selection_mode: s.kind,
@@ -74,7 +79,7 @@ export function selectionMetadata(s: ClipSelection) {
 }
 
 export function selectionFileSuffix(s: ClipSelection): string {
-  return s.kind === 'full' ? 'complete-video' : `bars-${s.firstBar + 1}-${s.firstBar + s.count}${s.beatOffset ? `.beat-offset-${s.beatOffset > 0 ? '+' : ''}${s.beatOffset}` : ''}`;
+  return s.kind === 'full' ? 'complete-video' : s.kind === 'range' ? `loop-${s.start.toFixed(3)}-${s.end.toFixed(3)}s` : `bars-${s.firstBar + 1}-${s.firstBar + s.count}${s.beatOffset ? `.beat-offset-${s.beatOffset > 0 ? '+' : ''}${s.beatOffset}` : ''}`;
 }
 
 export function excerptRhythm(a: AudioAnalysis, selection: ClipSelection) {

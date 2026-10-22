@@ -130,9 +130,21 @@ the same time map. FBX and JSON downloads contain the selected processed range,
 including an exact fractional closing key. The separate **Download original full
 GVHMR FBX** link preserves the untouched full-length extraction.
 
+Preview loading downloads files larger than 8 MiB in 2 MiB HTTP ranges, with
+up to ten attempts per chunk and visible byte progress. Interrupted chunks
+retry without downloading earlier chunks again; file size and ETag checks prevent
+combining different revisions. Switching videos or cancelling stops the requests.
+The complete file is still parsed locally, so large clips can take time to prepare
+on tablets. `[GVHMR]` browser-console entries distinguish download, parsing and
+character-preview failures. The server logs each transfer's time, byte range and
+HTTP status; connection failures appear in `logs/server.error.log` when using the
+macOS service. There is no application timeout on saved-animation downloads.
+
 The saved extraction uses its original dominant person. Live detection/person
-controls do not change it. The live character comparison remains Custom versus
-Kalidokit. Motion signal charts and BCLIP exports still use MediaPipe landmarks
+controls do not change it. The main character preview uses the same animation-source selection, and
+Compare solvers adds GVHMR beside Custom and Kalidokit for matched videos.
+The main preview follows the video clock and uses the original saved motion;
+extraction smoothing and timing controls apply to the extracted preview/downloads. Motion signal charts and BCLIP exports still use MediaPipe landmarks
 and the live preview's solver; they do not derive measurements from the saved
 GVHMR skeleton. JSON makes this explicit with empty landmark frames and unknown
 per-frame confidence. No new foot locking or loop-seam blending is applied.

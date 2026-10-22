@@ -76,7 +76,7 @@ export function fbxRoutes(root: string) {
       await writeFile(input, JSON.stringify(request.body));
       await run(blenderExecutable(), ['--background', '--factory-startup', '--python-exit-code', '1',
         '--python', path.join(root, 'scripts/export_fbx.py'), '--', '--input', input,
-        '--character', path.join(root, characterDefinition(request.body.character_id ?? DEFAULT_CHARACTER).file), '--output', output],
+        '--character', path.resolve(root, characterDefinition(request.body.character_id ?? DEFAULT_CHARACTER).file), '--output', output],
       { signal: controller.signal, timeout: 300000, maxBuffer: 2 * 1024 * 1024 });
       // This is a fetch response. An attachment header can make embedded browsers
       // intercept it as a navigation download before the caller receives the blob.
