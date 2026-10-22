@@ -11,6 +11,7 @@ logs/
 artifacts/
 videos/*
 !videos/.gitkeep
+!videos/*.analysis.json
 !videos/officialnickkosir_7696989498051202335.mp4
 !videos/_hide.guy__7108048184416455942.mp4
 !videos/_hide.guy__7182688726886239494.mp4
