@@ -1,0 +1,523 @@
+{
+  "project": "TD.3.toe",
+  "scenechangers": [
+    {
+      "path": "/project1/sceneChanger",
+      "parameters": [
+        {
+          "name": "Resolutionw",
+          "label": "Resolution",
+          "style": "WH",
+          "value": "1280.0",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Resolutionh",
+          "label": "Resolution",
+          "style": "WH",
+          "value": "720.0",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Scenescomp",
+          "label": "Scenes COMP",
+          "style": "COMP",
+          "value": "/project1/scenes",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Nextscene",
+          "label": "Next Scene",
+          "style": "Int",
+          "value": "0",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Fadetime",
+          "label": "Fade Time",
+          "style": "Int",
+          "value": "3",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Firescene",
+          "label": "Fire Scene",
+          "style": "Pulse",
+          "value": "False",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Currentscene",
+          "label": "Current Scene",
+          "style": "Int",
+          "value": "0",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Viewsceneindex",
+          "label": "View Scene Index",
+          "style": "Pulse",
+          "value": "False",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Generateui",
+          "label": "Generate UI",
+          "style": "Pulse",
+          "value": "False",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Generatescenetemplate",
+          "label": "Generate Scene Template",
+          "style": "Pulse",
+          "value": "False",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Reset",
+          "label": "Reset",
+          "style": "Pulse",
+          "value": "False",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Scenea",
+          "label": "SceneA",
+          "style": "COMP",
+          "value": "/project1/sceneChanger/sceneGate1",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Sceneb",
+          "label": "SceneB",
+          "style": "COMP",
+          "value": "/project1/sceneChanger/sceneGate0",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Toggleabba",
+          "label": "Toggleabba",
+          "style": "Toggle",
+          "value": "True",
+          "expression": null,
+          "menuNames": [
+            "off",
+            "on"
+          ],
+          "menuLabels": [
+            "Off",
+            "On"
+          ]
+        },
+        {
+          "name": "Help",
+          "label": "Help",
+          "style": "Pulse",
+          "value": "False",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Version",
+          "label": "Version",
+          "style": "Str",
+          "value": "1.0.9",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Toxsavebuild",
+          "label": ".tox Save Build",
+          "style": "Str",
+          "value": "2023.11388",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        }
+      ],
+      "texts": [
+        {
+          "path": "/project1/sceneChanger/docsHelper/DocsHelper",
+          "text": "\"\"\"\nGeneric docs help button and pulse par system\n\"\"\"\n\nDocsHelper = op.TDResources.mod.DocsHelper.DocsHelper"
+        },
+        {
+          "path": "/project1/sceneChanger/sceneChangerUi/masterRadioButton/radioButtons0/RadioExt",
+          "text": "SubWidgetExt = mod.SubWidgetExt.SubWidgetExt\nTDF = op.TDModules.mod.TDFunctions\n\nclass RadioExt(SubWidgetExt):\n\t\"\"\"\n\tRadioExt description\n\t\"\"\"\n\tdef __init__(self, ownerComp):\n\t\t# The component to which this extension is attached\n\t\tself.parPrefix = 'Radio'\n\t\tSubWidgetExt.__init__(self, ownerComp)\n\n\tdef onPanelEvent(self, event, panelValue):\n\t\tif event == 'offToOn':\n\t\t\tsetattr(parent.Widget.par, 'Value'+str(self.ownerComp.digits),\n\t\t\t\t\tpanelValue.owner.digits)\n\n\tdef onParSettingsChange(self, par, prev):\n\t\t\"\"\"\n\t\tManages value changes widget settings parameters\n\t\t\"\"\"\n\t\tval = par.eval()\n\t\tif par.name in ['Minmax01', 'Minmax02', 'Default0']:\n\t\t\tself.ownerComp.op('replicator1').par.recreateall.pulse()\n\t\telse:\n\t\t\tSubWidgetExt.onParSettingsChange(self, par, prev)\n\n\tdef makePanelExecute(self):\n\t\tSubWidgetExt.makePanelExecute(self,\n\t\t\t\t\t\"me.dock.op('\" + self.ownerComp.name +\"').path + '/radio*'\")"
+        },
+        {
+          "path": "/project1/sceneChanger/sceneChangerUi/masterRadioButton/radioButtons0/SubWidgetExt",
+          "text": "TDF = op.TDModules.mod.TDFunctions\n\n\nclass SubWidgetExt:\n\t\"\"\"\n\tRockerExt description\n\t\"\"\"\n\n\tdef __init__(self, ownerComp, indexComp=None):\n\t\t# The component to which this extension is attached\n\t\tself.ownerComp = ownerComp\n\t\tif indexComp:\n\t\t\tself.indexComp = indexComp\n\t\telse:\n\t\t\tself.indexComp = self.ownerComp\n\n\tdef onPanelEvent(self, event, panelValue):\n\t\t\"\"\"\n\t\tPanel exec events from widget\n\t\t\"\"\"\n\t\tpass\n\n\tdef onParSettingsChange(self, par, prev):\n\t\t\"\"\"\n\t\tManages value changes widget settings parameters\n\t\t\"\"\"\n\t\tval = par.eval()\n\t\tif par.name == self.parPrefix + 'runcommand':\n\t\t\tenable = par.eval()\n\t\t\tfor suffix in ['commandon', 'commandoff', 'commandonvaluechange']:\n\t\t\t\tp = self.prefixPar(suffix)\n\t\t\t\tif p is not None:\n\t\t\t\t\tp.enable = enable\n\t\telif par.name == self.parPrefix + 'horizontalmode':\n\t\t\tfill = True if val == 'fill' else False\n\t\t\tself.prefixPar('hfillweight').enable = fill\n\t\t\tself.prefixPar('width').enable = not fill\n\t\telif par.name == self.parPrefix + 'verticalmode':\n\t\t\tfill = True if val == 'fill' else False\n\t\t\tself.prefixPar('vfillweight').enable = fill\n\t\t\tself.prefixPar('height').enable = not fill\n\t\telif par.name in [self.parPrefix + 'bordera',\n\t\t\t\t\t\t  self.parPrefix + 'borderb',\n\t\t\t\t\t\t  self.parPrefix + 'border']:\n\t\t\tgetattr(parent.Widget.par, par.name + 'colorr').enable = par.eval()\n\n\tdef onParSettingsPulse(self, par):\n\t\t\"\"\"\n\t\tManages pulse events for widget settings parameters\n\t\t\"\"\"\n\t\tif par.name == self.parPrefix + 'customizeinteraction':\n\t\t\tself.makePanelExecute()\n\n\tdef onToggleEvent(self, event, panelValue):\n\t\tif event == 'offToOn':\n\t\t\tself.toggle()\n\n\tdef toggle(self):\n\t\tindex = self.indexComp.digits\n\t\tvaluePar = getattr(parent.Widget.par, 'Value' + str(index))\n\t\tvaluePar.val = 1 - valuePar.eval()\n\n\tdef prefixPar(self, suffix):\n\t\t\"\"\"\n\t\tReturn a parameter prefixed by parPrefix\n\t\t:param suffix: the par name after parPrefix (string)\n\t\t:return: the parameter or None if not found\n\t\t\"\"\"\n\t\treturn getattr(self.ownerComp.parent.Widget.par,\n\t\t\t\t\t   self.parPrefix + suffix, None)\n\n\tdef makePanelExecute(self, panelExpr=None):\n\t\t\"\"\"\n\t\tCreates a panel execute DAT for running external code from the\n\t\twidget that is connected to the button interaction receiver - which\n\t\tis the ownerComp of this class\n\n\t\tpanelExpr: will be used as the expression in the panel parameter of the \n\t\t\tpanelExec. Defaults to \"me.dock.op('\" + self.ownerComp.name +\"')\"\n\t\t\"\"\"\n\t\tpanelExecPar = self.PanelExecPar\n\t\tif not panelExecPar.eval():\n\t\t\tpeDat = self.ownerComp.parent.Widget.parent().create(\n\t\t\t\tpanelexecuteDAT, self.parPrefix + 'PanelExec')\n\t\t\tpeDat.nodeX = self.ownerComp.parent.Widget.nodeX - 200\n\t\t\tpeDat.nodeY = self.ownerComp.parent.Widget.nodeY\n\t\t\tpeDat.dock = self.ownerComp.parent.Widget\n\t\t\tpeDat.par.panel.expr = \"me.dock.op('\" + self.ownerComp.name + \"')\" \\\n\t\t\t\tif panelExpr is None else panelExpr\n\t\t\tpeDat.par.ontooff = True\n\t\t\tpeDat.viewer = True\n\t\t\tpanelExecPar.val = peDat.name\n\t\t\tpanelExecPar.enable = True\n\t\t\tpanelExecPar.readOnly = True\n\t\t\tself.ownerComp.op('panelExecOPExec').cook(force=True)\n\t\tpanelExecPar.eval().par.edit.pulse()\n\n\t@property\n\tdef PanelExecPar(self):\n\t\treturn getattr(parent.Widget.par, self.parPrefix + 'panelexec', None)\n\n"
+        },
+        {
+          "path": "/project1/sceneChanger/SceneChangerExt",
+          "text": "class SceneChangerExt:\n\t\"\"\"\n\tSceneChangerExt is the extension for the SceneChanger custom component\n\t\"\"\"\n\tdef __init__(self, ownerComp):\n\t\t# The component to which this extension is attached\n\t\tself.ownerComp = ownerComp\n\t\tself.scenesComp = self.ownerComp.par.Scenescomp.eval()\n\t\tself.sceneSelectComp = self.ownerComp.op('sceneSelect')\n\t\tself.sceneTogglePar = self.sceneSelectComp.par.Toggleabba\n\t\tself.sceneOrderDat = self.ownerComp.op('scenes')\n\t\tself.ab = ['a', 'b']\n\t\t\n\tdef FireScene(self):\n\t\t\"\"\"\n\t\tHandles the Firescene pulse parameter\n\t\t\"\"\"\n\t\tself.SceneChange(int(self.ownerComp.par.Nextscene.eval()), \n\t\t\t\t\t\t\t\tfadeTime = self.ownerComp.par.Fadetime.eval())\n\n\tdef SceneChange(self, sceneIndexOrName, fadeTime=None):\n\t\t\"\"\"\n\t\tChanges scene based on index or scene component name\n\t\t\"\"\"\n\t\t#debug(sceneIndexOrName)\n\t\tif isinstance(sceneIndexOrName, int) and \\\n\t\t\t\t\tself.ownerComp.par.Currentscene.eval() != sceneIndexOrName:\n\t\t\t#self.ownerComp.par.Scene = sceneIndexOrName\n\t\t\tself.SwitchToScene(sceneIndexOrName, fadeTime=fadeTime)\n\t\t\tindex = sceneIndexOrName\n\n\t\telif isinstance(sceneIndexOrName, int) and \\\n\t\t\t\t\tself.ownerComp.par.Currentscene.eval() == sceneIndexOrName:\n\t\t\tindex = None\n\t\t\tpass\n\t\telse:\n\t\t\trow = self.sceneOrderDat.row(sceneIndexOrName)\n\t\t\tif row:\n\t\t\t\tindex = row[0].row-1\n\t\t\t\t#self.ownerComp.par.Scene = index\n\t\t\t\tself.SwitchToScene(index, fadeTime=fadeTime)\n\t\t\telse:\n\t\t\t\tindex = None\n\t\treturn index\n\n\tdef SwitchToScene(self, index, fadeTime=None):\n\t\t\"\"\"\n\t\tControls scene change with fade \n\t\t\"\"\"\n\t\ttoggleState = self.sceneTogglePar.eval()\n\t\tnextId = self.ab[1-toggleState]\n\t\tcurId = self.ab[toggleState]\n\t\tnGateComp = self.ownerComp.op('./sceneGate'+str(index))\n\t\tcGateComp = getattr(self.sceneSelectComp.par, 'Scene'+curId).eval()\n\t\tif isinstance(nGateComp, COMP):\n\t\t\tnSceneComp = nGateComp.par.Scenecomp.eval()\n\t\t\tcSceneComp = cGateComp.par.Scenecomp.eval()\n\t\t\tgetattr(self.sceneSelectComp.par,\n\t\t\t\t\t\t\t\t\t'Scene'+nextId).val = './' + nGateComp.name\n\t\t\t\n\t\t\tif fadeTime is None and hasattr(nSceneComp.par, 'Fadeintime'):\n\t\t\t\tnGateComp.par.Fadetime = nSceneComp.par.Fadeintime.eval()\n\t\t\telif fadeTime is not None:\n\t\t\t\tnGateComp.par.Fadetime = fadeTime\n\t\t\telse:\n\t\t\t\tdebug(nSceneComp.path + ' may not be a valid scene component. Please check compliance')\n\n\t\t\tif fadeTime is None and hasattr(cSceneComp.par, 'Fadeouttime'):\n\t\t\t\tcGateComp.par.Fadetime = cSceneComp.par.Fadeouttime.eval()\n\t\t\telif fadeTime is not None:\n\t\t\t\tcGateComp.par.Fadetime = fadeTime\n\t\t\telse:\n\t\t\t\t cGateComp.par.Fadetime = fadeTime\n\t\t\tself.sceneTogglePar.val = 1-toggleState\n\t\t\tself.ownerComp.par.Currentscene = index\n\t\t\t\n\tdef gateActivateOn(self, gateComp):\n\t\t\"\"\"\n\t\tActivates the gate and pulses the scene start \n\t\t\"\"\"\n\t\tsceneComp = gateComp.par.Scenecomp.eval()\n\t\tif isinstance(sceneComp, COMP):\n\t\t\tif hasattr(sceneComp.par, 'Start'):\n\t\t\t\tsceneComp.par.Start.pulse()\n\t\t\t\tsceneComp.par.Play = True\n\n\tdef gateActivateOff(self, gateComp):\n\t\tsceneComp = gateComp.par.Scenecomp.eval()\n\t\tif isinstance(sceneComp, COMP):\n\t\t\tif hasattr(sceneComp.par, 'Init'):\n\t\t\t\tsceneComp.par.Init.pulse()\n\t\t\t\tsceneComp.par.Play = False\n\n\tdef GenerateUI(self):\n\t\t\"\"\"\n\t\tGenerates a basic UI as a starting point to drive the scene changer system\n\t\t\"\"\"\n\t\tsceneChangerUi = self.ownerComp.parent().copy(self.ownerComp.op('sceneChangerUi'), name='sceneChangerUi', includeDocked=True)\n\t\tsceneChangerUi.nodeX = self.ownerComp.nodeX\n\t\tsceneChangerUi.nodeY = self.ownerComp.nodeY - self.ownerComp.nodeHeight - (sceneChangerUi.nodeHeight/2)\n\t\tsceneChangerUi.allowCooking = sceneChangerUi.display = sceneChangerUi.par.display = True\n\t\tsceneChangerUi.par.Scenechanger = self.ownerComp\n\t\n\tdef GenerateSceneTemplate(self):\n\t\t\"\"\"\n\t\tGenerates a scene component that can be copied to the specified scenes component\n\t\t\"\"\"\n\t\tsceneTemplate = self.ownerComp.parent().copy(self.ownerComp.op('sceneTemplate'), name='sceneTemplate', includeDocked=True)\n\t\tsceneTemplate.nodeX = self.ownerComp.nodeX\n\t\tsceneTemplate.nodeY = self.ownerComp.nodeY - self.ownerComp.nodeHeight - (sceneTemplate.nodeHeight/2)\n\n\tdef Reset(self):\n\t\t\"\"\"\n\t\tResets the scene componoent\n\t\t\"\"\"\n\t\tself.ownerComp.par.Resolutionw = 1280\n\t\tself.ownerComp.par.Resolutionh = 720\n\t\tself.ownerComp.par.Scenescomp = ''\n\t\t\n\t\tself.ownerComp.par.Nextscene = 0\n\t\tself.ownerComp.par.Currentscene = 0\n\n\t\tself.ownerComp.par.Scenea = './sceneGate1'\n\t\tself.ownerComp.par.Sceneb = './sceneGate0'\n\n\n\n\t\t"
+        },
+        {
+          "path": "/project1/sceneChanger/PackageCompliance/annotation/title/buttons/text1_callbacks",
+          "text": "# me - this DAT.\n# textCOMP - The connected Text COMP\n\ndef onValueChange(comp, value, prevValue):\n\treturn\n\t\ndef onFocus(comp):\n\treturn\n\ndef onFocusEnd(comp):\n\treturn\n\t\ndef onTextEdit(comp):\n\treturn\n\t\n\t"
+        },
+        {
+          "path": "/project1/sceneChanger/PackageCompliance/annotation/title/dragger/help",
+          "text": "Double-click to edit.\nDrag to move.\nRight click for options."
+        },
+        {
+          "path": "/project1/sceneChanger/PackageCompliance/annotation/title/titleText_callbacks",
+          "text": "# Text Component callbacks\n\ndef onValueChange(comp, value, prevValue):\n\t\"\"\"\n\tCalled whenever the text component's value parameter changes for any reason including typing\n\tin the text window or changing the parameter directly. The callback is equivalent to the\n\tonValueChange in the parameter exectute DAT.\n\t\n\tArgs:\n\t\tcomp: the text component\n\t\tvalue: the new value\n\t\tprevValue: the previous value\n\t\"\"\"\n\t#debug('\\nonValueChange comp:', comp.path, '- new value: ', value, ', prev value: ', prevValue )\n\treturn\n\t\ndef onFocus(comp):\n\t\"\"\"\n\tCalled when one of the text components viewers gets keyboard focus. \n\t\n\tArgs:\n\t\tcomp: the text component\n\t\"\"\"\n\t#debug('\\nonFocus comp:', comp.path)\n\treturn\n\ndef onFocusEnd(comp, info):\n\t\"\"\"\n\tCalled when one of the text component's viewers loses keyboard focus. In regular editing mode\n\tthis is right after the contents are saved back to the value parameter. This function is called\n\teverytime the viewer loses focus, even if the text does not change.\n\t\n\tArgs:\n\t\tcomp: the text component\n\t\tinfo: a dictionary containing information about the event including:\n\t\t\treason: a string indicating what caused the viewer to lose focus e.g. 'enter', 'escape', 'tab', 'unknown'\n\t\n\t\"\"\"\n\tif info['reason'] not in ['tab', 'unknown']:\n\t\tparent.Annotate.Editing = False\n\treturn\n\t\ndef onTextEdit(comp):\n\t\"\"\"\n\tCalled each time the contents of the text component viewer change i.e. when typing a character,\n\tdeleting text, cutting or pasting. \n\t\n\tArgs:\n\t\tcomp: the text component\n\t\"\"\"\n\t#debug('\\nonTextEdit comp:', comp.path, '- text: ', comp.editText)\n\treturn\n\t\ndef onTextEditEnd(comp, value, prevValue):\n\t\"\"\"\n\tCalled when the user finishes editing and the value has been changed. Not called in 'Continuous Edit' mode. Use\n\tonTextEdit and onFocusEnd when using continuous editing.\n\t\n\tArgs:\n\t\tcomp: the text component\n\t\tvalue: the new value\n\t\tprevValue: the previous value\n\t\"\"\"\n\t#debug('\\nonTextEditEnd comp:', comp.path, '- new value: ', value, ', prev value: ', prevValue )\n\treturn\n\t\n\t"
+        },
+        {
+          "path": "/project1/sceneChanger/opfind1_callbacks",
+          "text": "# me - this DAT\n# dat - the DAT that is querying\n# curOp - the OP being queried\n# row - the table row index\n\n# Uncomment following two functions to add custom columns\n\n#def onInitGetColumnNames(dat):\n#\treturn ['digits', 'inputs']\n#\n#def onFindOPGetValues(dat, curOp, row):\n#\treturn [curOp.digits, len(curOp.inputs)]\n\n# Uncomment the following to control which OPs are included\n\n#def onFindOPGetInclude(dat, curOp, row):\n#\treturn True\n\n\n# An extensive list of what was matched for each operator.\n# Multiple tags, parameters and cells are included.\n#\n# Format: dictionary\n#\n#  'name': curOp.name\n#  'type': curOp.OPType\n#  'path': curOp.path\n#  'parent' : curOp.parent()\n#  'comment': curOp.comment\n#  'tags' : [list of strings] or empty list\n#  'text' : [list of Cells] or empty list\n#  'par': dictionary of matching parameter atttributes.\n#    example entries:\n#        tx : { 'name': True, 'value':True , 'expression':True }\n#        ty : { 'value' : True }\n#\n\ndef onOPFound(dat, curOp, row, results):\n\treturn\n\n\t"
+        },
+        {
+          "path": "/project1/sceneChanger/replicator1_callbacks",
+          "text": "# me - this DAT\n# \n# comp - the replicator component which is cooking\n# allOps - a list of all replicants, created or existing\n# newOps - the subset that were just created\n# template - table DAT specifying the replicator attributes\n# master - the master operator\n#\n\ndef onReplicate(comp, allOps, newOps, template, master):\n\n\tfor c in newOps:\n\t\t#c.display = True\n\t\t#c.render = True\n\t\t#c.par.display = 1\n\t\t#c.par.clone = comp.par.master\n\t\tc.allowCooking = True\n\t\tpass\n\n\treturn\n"
+        }
+      ]
+    },
+    {
+      "path": "/project1/sceneChanger/sceneChangerUi",
+      "parameters": [
+        {
+          "name": "Scenechanger",
+          "label": "Scene Changer",
+          "style": "COMP",
+          "value": "/project1/sceneChanger",
+          "expression": "parent.SceneChanger",
+          "menuNames": [],
+          "menuLabels": []
+        }
+      ],
+      "texts": [
+        {
+          "path": "/project1/sceneChanger/sceneChangerUi/masterRadioButton/radioButtons0/RadioExt",
+          "text": "SubWidgetExt = mod.SubWidgetExt.SubWidgetExt\nTDF = op.TDModules.mod.TDFunctions\n\nclass RadioExt(SubWidgetExt):\n\t\"\"\"\n\tRadioExt description\n\t\"\"\"\n\tdef __init__(self, ownerComp):\n\t\t# The component to which this extension is attached\n\t\tself.parPrefix = 'Radio'\n\t\tSubWidgetExt.__init__(self, ownerComp)\n\n\tdef onPanelEvent(self, event, panelValue):\n\t\tif event == 'offToOn':\n\t\t\tsetattr(parent.Widget.par, 'Value'+str(self.ownerComp.digits),\n\t\t\t\t\tpanelValue.owner.digits)\n\n\tdef onParSettingsChange(self, par, prev):\n\t\t\"\"\"\n\t\tManages value changes widget settings parameters\n\t\t\"\"\"\n\t\tval = par.eval()\n\t\tif par.name in ['Minmax01', 'Minmax02', 'Default0']:\n\t\t\tself.ownerComp.op('replicator1').par.recreateall.pulse()\n\t\telse:\n\t\t\tSubWidgetExt.onParSettingsChange(self, par, prev)\n\n\tdef makePanelExecute(self):\n\t\tSubWidgetExt.makePanelExecute(self,\n\t\t\t\t\t\"me.dock.op('\" + self.ownerComp.name +\"').path + '/radio*'\")"
+        },
+        {
+          "path": "/project1/sceneChanger/sceneChangerUi/masterRadioButton/radioButtons0/SubWidgetExt",
+          "text": "TDF = op.TDModules.mod.TDFunctions\n\n\nclass SubWidgetExt:\n\t\"\"\"\n\tRockerExt description\n\t\"\"\"\n\n\tdef __init__(self, ownerComp, indexComp=None):\n\t\t# The component to which this extension is attached\n\t\tself.ownerComp = ownerComp\n\t\tif indexComp:\n\t\t\tself.indexComp = indexComp\n\t\telse:\n\t\t\tself.indexComp = self.ownerComp\n\n\tdef onPanelEvent(self, event, panelValue):\n\t\t\"\"\"\n\t\tPanel exec events from widget\n\t\t\"\"\"\n\t\tpass\n\n\tdef onParSettingsChange(self, par, prev):\n\t\t\"\"\"\n\t\tManages value changes widget settings parameters\n\t\t\"\"\"\n\t\tval = par.eval()\n\t\tif par.name == self.parPrefix + 'runcommand':\n\t\t\tenable = par.eval()\n\t\t\tfor suffix in ['commandon', 'commandoff', 'commandonvaluechange']:\n\t\t\t\tp = self.prefixPar(suffix)\n\t\t\t\tif p is not None:\n\t\t\t\t\tp.enable = enable\n\t\telif par.name == self.parPrefix + 'horizontalmode':\n\t\t\tfill = True if val == 'fill' else False\n\t\t\tself.prefixPar('hfillweight').enable = fill\n\t\t\tself.prefixPar('width').enable = not fill\n\t\telif par.name == self.parPrefix + 'verticalmode':\n\t\t\tfill = True if val == 'fill' else False\n\t\t\tself.prefixPar('vfillweight').enable = fill\n\t\t\tself.prefixPar('height').enable = not fill\n\t\telif par.name in [self.parPrefix + 'bordera',\n\t\t\t\t\t\t  self.parPrefix + 'borderb',\n\t\t\t\t\t\t  self.parPrefix + 'border']:\n\t\t\tgetattr(parent.Widget.par, par.name + 'colorr').enable = par.eval()\n\n\tdef onParSettingsPulse(self, par):\n\t\t\"\"\"\n\t\tManages pulse events for widget settings parameters\n\t\t\"\"\"\n\t\tif par.name == self.parPrefix + 'customizeinteraction':\n\t\t\tself.makePanelExecute()\n\n\tdef onToggleEvent(self, event, panelValue):\n\t\tif event == 'offToOn':\n\t\t\tself.toggle()\n\n\tdef toggle(self):\n\t\tindex = self.indexComp.digits\n\t\tvaluePar = getattr(parent.Widget.par, 'Value' + str(index))\n\t\tvaluePar.val = 1 - valuePar.eval()\n\n\tdef prefixPar(self, suffix):\n\t\t\"\"\"\n\t\tReturn a parameter prefixed by parPrefix\n\t\t:param suffix: the par name after parPrefix (string)\n\t\t:return: the parameter or None if not found\n\t\t\"\"\"\n\t\treturn getattr(self.ownerComp.parent.Widget.par,\n\t\t\t\t\t   self.parPrefix + suffix, None)\n\n\tdef makePanelExecute(self, panelExpr=None):\n\t\t\"\"\"\n\t\tCreates a panel execute DAT for running external code from the\n\t\twidget that is connected to the button interaction receiver - which\n\t\tis the ownerComp of this class\n\n\t\tpanelExpr: will be used as the expression in the panel parameter of the \n\t\t\tpanelExec. Defaults to \"me.dock.op('\" + self.ownerComp.name +\"')\"\n\t\t\"\"\"\n\t\tpanelExecPar = self.PanelExecPar\n\t\tif not panelExecPar.eval():\n\t\t\tpeDat = self.ownerComp.parent.Widget.parent().create(\n\t\t\t\tpanelexecuteDAT, self.parPrefix + 'PanelExec')\n\t\t\tpeDat.nodeX = self.ownerComp.parent.Widget.nodeX - 200\n\t\t\tpeDat.nodeY = self.ownerComp.parent.Widget.nodeY\n\t\t\tpeDat.dock = self.ownerComp.parent.Widget\n\t\t\tpeDat.par.panel.expr = \"me.dock.op('\" + self.ownerComp.name + \"')\" \\\n\t\t\t\tif panelExpr is None else panelExpr\n\t\t\tpeDat.par.ontooff = True\n\t\t\tpeDat.viewer = True\n\t\t\tpanelExecPar.val = peDat.name\n\t\t\tpanelExecPar.enable = True\n\t\t\tpanelExecPar.readOnly = True\n\t\t\tself.ownerComp.op('panelExecOPExec').cook(force=True)\n\t\tpanelExecPar.eval().par.edit.pulse()\n\n\t@property\n\tdef PanelExecPar(self):\n\t\treturn getattr(parent.Widget.par, self.parPrefix + 'panelexec', None)\n\n"
+        }
+      ]
+    },
+    {
+      "path": "/project1/sceneChanger1",
+      "parameters": [
+        {
+          "name": "Resolutionw",
+          "label": "Resolution",
+          "style": "WH",
+          "value": "1280.0",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Resolutionh",
+          "label": "Resolution",
+          "style": "WH",
+          "value": "720.0",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Scenescomp",
+          "label": "Scenes COMP",
+          "style": "COMP",
+          "value": "/project1/scenes",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Nextscene",
+          "label": "Next Scene",
+          "style": "Int",
+          "value": "0",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Fadetime",
+          "label": "Fade Time",
+          "style": "Int",
+          "value": "3",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Firescene",
+          "label": "Fire Scene",
+          "style": "Pulse",
+          "value": "False",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Currentscene",
+          "label": "Current Scene",
+          "style": "Int",
+          "value": "1",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Viewsceneindex",
+          "label": "View Scene Index",
+          "style": "Pulse",
+          "value": "False",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Generateui",
+          "label": "Generate UI",
+          "style": "Pulse",
+          "value": "False",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Generatescenetemplate",
+          "label": "Generate Scene Template",
+          "style": "Pulse",
+          "value": "False",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Reset",
+          "label": "Reset",
+          "style": "Pulse",
+          "value": "False",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Scenea",
+          "label": "SceneA",
+          "style": "COMP",
+          "value": "/project1/sceneChanger1/sceneGate1",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Sceneb",
+          "label": "SceneB",
+          "style": "COMP",
+          "value": "/project1/sceneChanger1/sceneGate0",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Toggleabba",
+          "label": "Toggleabba",
+          "style": "Toggle",
+          "value": "False",
+          "expression": null,
+          "menuNames": [
+            "off",
+            "on"
+          ],
+          "menuLabels": [
+            "Off",
+            "On"
+          ]
+        },
+        {
+          "name": "Help",
+          "label": "Help",
+          "style": "Pulse",
+          "value": "False",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Version",
+          "label": "Version",
+          "style": "Str",
+          "value": "1.0.9",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        },
+        {
+          "name": "Toxsavebuild",
+          "label": ".tox Save Build",
+          "style": "Str",
+          "value": "2023.11388",
+          "expression": null,
+          "menuNames": [],
+          "menuLabels": []
+        }
+      ],
+      "texts": [
+        {
+          "path": "/project1/sceneChanger1/docsHelper/DocsHelper",
+          "text": "\"\"\"\nGeneric docs help button and pulse par system\n\"\"\"\n\nDocsHelper = op.TDResources.mod.DocsHelper.DocsHelper"
+        },
+        {
+          "path": "/project1/sceneChanger1/sceneChangerUi/masterRadioButton/radioButtons0/RadioExt",
+          "text": "SubWidgetExt = mod.SubWidgetExt.SubWidgetExt\nTDF = op.TDModules.mod.TDFunctions\n\nclass RadioExt(SubWidgetExt):\n\t\"\"\"\n\tRadioExt description\n\t\"\"\"\n\tdef __init__(self, ownerComp):\n\t\t# The component to which this extension is attached\n\t\tself.parPrefix = 'Radio'\n\t\tSubWidgetExt.__init__(self, ownerComp)\n\n\tdef onPanelEvent(self, event, panelValue):\n\t\tif event == 'offToOn':\n\t\t\tsetattr(parent.Widget.par, 'Value'+str(self.ownerComp.digits),\n\t\t\t\t\tpanelValue.owner.digits)\n\n\tdef onParSettingsChange(self, par, prev):\n\t\t\"\"\"\n\t\tManages value changes widget settings parameters\n\t\t\"\"\"\n\t\tval = par.eval()\n\t\tif par.name in ['Minmax01', 'Minmax02', 'Default0']:\n\t\t\tself.ownerComp.op('replicator1').par.recreateall.pulse()\n\t\telse:\n\t\t\tSubWidgetExt.onParSettingsChange(self, par, prev)\n\n\tdef makePanelExecute(self):\n\t\tSubWidgetExt.makePanelExecute(self,\n\t\t\t\t\t\"me.dock.op('\" + self.ownerComp.name +\"').path + '/radio*'\")"
+        },
+        {
+          "path": "/project1/sceneChanger1/sceneChangerUi/masterRadioButton/radioButtons0/SubWidgetExt",
+          "text": "TDF = op.TDModules.mod.TDFunctions\n\n\nclass SubWidgetExt:\n\t\"\"\"\n\tRockerExt description\n\t\"\"\"\n\n\tdef __init__(self, ownerComp, indexComp=None):\n\t\t# The component to which this extension is attached\n\t\tself.ownerComp = ownerComp\n\t\tif indexComp:\n\t\t\tself.indexComp = indexComp\n\t\telse:\n\t\t\tself.indexComp = self.ownerComp\n\n\tdef onPanelEvent(self, event, panelValue):\n\t\t\"\"\"\n\t\tPanel exec events from widget\n\t\t\"\"\"\n\t\tpass\n\n\tdef onParSettingsChange(self, par, prev):\n\t\t\"\"\"\n\t\tManages value changes widget settings parameters\n\t\t\"\"\"\n\t\tval = par.eval()\n\t\tif par.name == self.parPrefix + 'runcommand':\n\t\t\tenable = par.eval()\n\t\t\tfor suffix in ['commandon', 'commandoff', 'commandonvaluechange']:\n\t\t\t\tp = self.prefixPar(suffix)\n\t\t\t\tif p is not None:\n\t\t\t\t\tp.enable = enable\n\t\telif par.name == self.parPrefix + 'horizontalmode':\n\t\t\tfill = True if val == 'fill' else False\n\t\t\tself.prefixPar('hfillweight').enable = fill\n\t\t\tself.prefixPar('width').enable = not fill\n\t\telif par.name == self.parPrefix + 'verticalmode':\n\t\t\tfill = True if val == 'fill' else False\n\t\t\tself.prefixPar('vfillweight').enable = fill\n\t\t\tself.prefixPar('height').enable = not fill\n\t\telif par.name in [self.parPrefix + 'bordera',\n\t\t\t\t\t\t  self.parPrefix + 'borderb',\n\t\t\t\t\t\t  self.parPrefix + 'border']:\n\t\t\tgetattr(parent.Widget.par, par.name + 'colorr').enable = par.eval()\n\n\tdef onParSettingsPulse(self, par):\n\t\t\"\"\"\n\t\tManages pulse events for widget settings parameters\n\t\t\"\"\"\n\t\tif par.name == self.parPrefix + 'customizeinteraction':\n\t\t\tself.makePanelExecute()\n\n\tdef onToggleEvent(self, event, panelValue):\n\t\tif event == 'offToOn':\n\t\t\tself.toggle()\n\n\tdef toggle(self):\n\t\tindex = self.indexComp.digits\n\t\tvaluePar = getattr(parent.Widget.par, 'Value' + str(index))\n\t\tvaluePar.val = 1 - valuePar.eval()\n\n\tdef prefixPar(self, suffix):\n\t\t\"\"\"\n\t\tReturn a parameter prefixed by parPrefix\n\t\t:param suffix: the par name after parPrefix (string)\n\t\t:return: the parameter or None if not found\n\t\t\"\"\"\n\t\treturn getattr(self.ownerComp.parent.Widget.par,\n\t\t\t\t\t   self.parPrefix + suffix, None)\n\n\tdef makePanelExecute(self, panelExpr=None):\n\t\t\"\"\"\n\t\tCreates a panel execute DAT for running external code from the\n\t\twidget that is connected to the button interaction receiver - which\n\t\tis the ownerComp of this class\n\n\t\tpanelExpr: will be used as the expression in the panel parameter of the \n\t\t\tpanelExec. Defaults to \"me.dock.op('\" + self.ownerComp.name +\"')\"\n\t\t\"\"\"\n\t\tpanelExecPar = self.PanelExecPar\n\t\tif not panelExecPar.eval():\n\t\t\tpeDat = self.ownerComp.parent.Widget.parent().create(\n\t\t\t\tpanelexecuteDAT, self.parPrefix + 'PanelExec')\n\t\t\tpeDat.nodeX = self.ownerComp.parent.Widget.nodeX - 200\n\t\t\tpeDat.nodeY = self.ownerComp.parent.Widget.nodeY\n\t\t\tpeDat.dock = self.ownerComp.parent.Widget\n\t\t\tpeDat.par.panel.expr = \"me.dock.op('\" + self.ownerComp.name + \"')\" \\\n\t\t\t\tif panelExpr is None else panelExpr\n\t\t\tpeDat.par.ontooff = True\n\t\t\tpeDat.viewer = True\n\t\t\tpanelExecPar.val = peDat.name\n\t\t\tpanelExecPar.enable = True\n\t\t\tpanelExecPar.readOnly = True\n\t\t\tself.ownerComp.op('panelExecOPExec').cook(force=True)\n\t\tpanelExecPar.eval().par.edit.pulse()\n\n\t@property\n\tdef PanelExecPar(self):\n\t\treturn getattr(parent.Widget.par, self.parPrefix + 'panelexec', None)\n\n"
+        },
+        {
+          "path": "/project1/sceneChanger1/SceneChangerExt",
+          "text": "class SceneChangerExt:\n\t\"\"\"\n\tSceneChangerExt is the extension for the SceneChanger custom component\n\t\"\"\"\n\tdef __init__(self, ownerComp):\n\t\t# The component to which this extension is attached\n\t\tself.ownerComp = ownerComp\n\t\tself.scenesComp = self.ownerComp.par.Scenescomp.eval()\n\t\tself.sceneSelectComp = self.ownerComp.op('sceneSelect')\n\t\tself.sceneTogglePar = self.sceneSelectComp.par.Toggleabba\n\t\tself.sceneOrderDat = self.ownerComp.op('scenes')\n\t\tself.ab = ['a', 'b']\n\t\t\n\tdef FireScene(self):\n\t\t\"\"\"\n\t\tHandles the Firescene pulse parameter\n\t\t\"\"\"\n\t\tself.SceneChange(int(self.ownerComp.par.Nextscene.eval()), \n\t\t\t\t\t\t\t\tfadeTime = self.ownerComp.par.Fadetime.eval())\n\n\tdef SceneChange(self, sceneIndexOrName, fadeTime=None):\n\t\t\"\"\"\n\t\tChanges scene based on index or scene component name\n\t\t\"\"\"\n\t\t#debug(sceneIndexOrName)\n\t\tif isinstance(sceneIndexOrName, int) and \\\n\t\t\t\t\tself.ownerComp.par.Currentscene.eval() != sceneIndexOrName:\n\t\t\t#self.ownerComp.par.Scene = sceneIndexOrName\n\t\t\tself.SwitchToScene(sceneIndexOrName, fadeTime=fadeTime)\n\t\t\tindex = sceneIndexOrName\n\n\t\telif isinstance(sceneIndexOrName, int) and \\\n\t\t\t\t\tself.ownerComp.par.Currentscene.eval() == sceneIndexOrName:\n\t\t\tindex = None\n\t\t\tpass\n\t\telse:\n\t\t\trow = self.sceneOrderDat.row(sceneIndexOrName)\n\t\t\tif row:\n\t\t\t\tindex = row[0].row-1\n\t\t\t\t#self.ownerComp.par.Scene = index\n\t\t\t\tself.SwitchToScene(index, fadeTime=fadeTime)\n\t\t\telse:\n\t\t\t\tindex = None\n\t\treturn index\n\n\tdef SwitchToScene(self, index, fadeTime=None):\n\t\t\"\"\"\n\t\tControls scene change with fade \n\t\t\"\"\"\n\t\ttoggleState = self.sceneTogglePar.eval()\n\t\tnextId = self.ab[1-toggleState]\n\t\tcurId = self.ab[toggleState]\n\t\tnGateComp = self.ownerComp.op('./sceneGate'+str(index))\n\t\tcGateComp = getattr(self.sceneSelectComp.par, 'Scene'+curId).eval()\n\t\tif isinstance(nGateComp, COMP):\n\t\t\tnSceneComp = nGateComp.par.Scenecomp.eval()\n\t\t\tcSceneComp = cGateComp.par.Scenecomp.eval()\n\t\t\tgetattr(self.sceneSelectComp.par,\n\t\t\t\t\t\t\t\t\t'Scene'+nextId).val = './' + nGateComp.name\n\t\t\t\n\t\t\tif fadeTime is None and hasattr(nSceneComp.par, 'Fadeintime'):\n\t\t\t\tnGateComp.par.Fadetime = nSceneComp.par.Fadeintime.eval()\n\t\t\telif fadeTime is not None:\n\t\t\t\tnGateComp.par.Fadetime = fadeTime\n\t\t\telse:\n\t\t\t\tdebug(nSceneComp.path + ' may not be a valid scene component. Please check compliance')\n\n\t\t\tif fadeTime is None and hasattr(cSceneComp.par, 'Fadeouttime'):\n\t\t\t\tcGateComp.par.Fadetime = cSceneComp.par.Fadeouttime.eval()\n\t\t\telif fadeTime is not None:\n\t\t\t\tcGateComp.par.Fadetime = fadeTime\n\t\t\telse:\n\t\t\t\t cGateComp.par.Fadetime = fadeTime\n\t\t\tself.sceneTogglePar.val = 1-toggleState\n\t\t\tself.ownerComp.par.Currentscene = index\n\t\t\t\n\tdef gateActivateOn(self, gateComp):\n\t\t\"\"\"\n\t\tActivates the gate and pulses the scene start \n\t\t\"\"\"\n\t\tsceneComp = gateComp.par.Scenecomp.eval()\n\t\tif isinstance(sceneComp, COMP):\n\t\t\tif hasattr(sceneComp.par, 'Start'):\n\t\t\t\tsceneComp.par.Start.pulse()\n\t\t\t\tsceneComp.par.Play = True\n\n\tdef gateActivateOff(self, gateComp):\n\t\tsceneComp = gateComp.par.Scenecomp.eval()\n\t\tif isinstance(sceneComp, COMP):\n\t\t\tif hasattr(sceneComp.par, 'Init'):\n\t\t\t\tsceneComp.par.Init.pulse()\n\t\t\t\tsceneComp.par.Play = False\n\n\tdef GenerateUI(self):\n\t\t\"\"\"\n\t\tGenerates a basic UI as a starting point to drive the scene changer system\n\t\t\"\"\"\n\t\tsceneChangerUi = self.ownerComp.parent().copy(self.ownerComp.op('sceneChangerUi'), name='sceneChangerUi', includeDocked=True)\n\t\tsceneChangerUi.nodeX = self.ownerComp.nodeX\n\t\tsceneChangerUi.nodeY = self.ownerComp.nodeY - self.ownerComp.nodeHeight - (sceneChangerUi.nodeHeight/2)\n\t\tsceneChangerUi.allowCooking = sceneChangerUi.display = sceneChangerUi.par.display = True\n\t\tsceneChangerUi.par.Scenechanger = self.ownerComp\n\t\n\tdef GenerateSceneTemplate(self):\n\t\t\"\"\"\n\t\tGenerates a scene component that can be copied to the specified scenes component\n\t\t\"\"\"\n\t\tsceneTemplate = self.ownerComp.parent().copy(self.ownerComp.op('sceneTemplate'), name='sceneTemplate', includeDocked=True)\n\t\tsceneTemplate.nodeX = self.ownerComp.nodeX\n\t\tsceneTemplate.nodeY = self.ownerComp.nodeY - self.ownerComp.nodeHeight - (sceneTemplate.nodeHeight/2)\n\n\tdef Reset(self):\n\t\t\"\"\"\n\t\tResets the scene componoent\n\t\t\"\"\"\n\t\tself.ownerComp.par.Resolutionw = 1280\n\t\tself.ownerComp.par.Resolutionh = 720\n\t\tself.ownerComp.par.Scenescomp = ''\n\t\t\n\t\tself.ownerComp.par.Nextscene = 0\n\t\tself.ownerComp.par.Currentscene = 0\n\n\t\tself.ownerComp.par.Scenea = './sceneGate1'\n\t\tself.ownerComp.par.Sceneb = './sceneGate0'\n\n\n\n\t\t"
+        },
+        {
+          "path": "/project1/sceneChanger1/PackageCompliance/annotation/title/buttons/text1_callbacks",
+          "text": "# me - this DAT.\n# textCOMP - The connected Text COMP\n\ndef onValueChange(comp, value, prevValue):\n\treturn\n\t\ndef onFocus(comp):\n\treturn\n\ndef onFocusEnd(comp):\n\treturn\n\t\ndef onTextEdit(comp):\n\treturn\n\t\n\t"
+        },
+        {
+          "path": "/project1/sceneChanger1/PackageCompliance/annotation/title/dragger/help",
+          "text": "Double-click to edit.\nDrag to move.\nRight click for options."
+        },
+        {
+          "path": "/project1/sceneChanger1/PackageCompliance/annotation/title/titleText_callbacks",
+          "text": "# Text Component callbacks\n\ndef onValueChange(comp, value, prevValue):\n\t\"\"\"\n\tCalled whenever the text component's value parameter changes for any reason including typing\n\tin the text window or changing the parameter directly. The callback is equivalent to the\n\tonValueChange in the parameter exectute DAT.\n\t\n\tArgs:\n\t\tcomp: the text component\n\t\tvalue: the new value\n\t\tprevValue: the previous value\n\t\"\"\"\n\t#debug('\\nonValueChange comp:', comp.path, '- new value: ', value, ', prev value: ', prevValue )\n\treturn\n\t\ndef onFocus(comp):\n\t\"\"\"\n\tCalled when one of the text components viewers gets keyboard focus. \n\t\n\tArgs:\n\t\tcomp: the text component\n\t\"\"\"\n\t#debug('\\nonFocus comp:', comp.path)\n\treturn\n\ndef onFocusEnd(comp, info):\n\t\"\"\"\n\tCalled when one of the text component's viewers loses keyboard focus. In regular editing mode\n\tthis is right after the contents are saved back to the value parameter. This function is called\n\teverytime the viewer loses focus, even if the text does not change.\n\t\n\tArgs:\n\t\tcomp: the text component\n\t\tinfo: a dictionary containing information about the event including:\n\t\t\treason: a string indicating what caused the viewer to lose focus e.g. 'enter', 'escape', 'tab', 'unknown'\n\t\n\t\"\"\"\n\tif info['reason'] not in ['tab', 'unknown']:\n\t\tparent.Annotate.Editing = False\n\treturn\n\t\ndef onTextEdit(comp):\n\t\"\"\"\n\tCalled each time the contents of the text component viewer change i.e. when typing a character,\n\tdeleting text, cutting or pasting. \n\t\n\tArgs:\n\t\tcomp: the text component\n\t\"\"\"\n\t#debug('\\nonTextEdit comp:', comp.path, '- text: ', comp.editText)\n\treturn\n\t\ndef onTextEditEnd(comp, value, prevValue):\n\t\"\"\"\n\tCalled when the user finishes editing and the value has been changed. Not called in 'Continuous Edit' mode. Use\n\tonTextEdit and onFocusEnd when using continuous editing.\n\t\n\tArgs:\n\t\tcomp: the text component\n\t\tvalue: the new value\n\t\tprevValue: the previous value\n\t\"\"\"\n\t#debug('\\nonTextEditEnd comp:', comp.path, '- new value: ', value, ', prev value: ', prevValue )\n\treturn\n\t\n\t"
+        },
+        {
+          "path": "/project1/sceneChanger1/opfind1_callbacks",
+          "text": "# me - this DAT\n# dat - the DAT that is querying\n# curOp - the OP being queried\n# row - the table row index\n\n# Uncomment following two functions to add custom columns\n\n#def onInitGetColumnNames(dat):\n#\treturn ['digits', 'inputs']\n#\n#def onFindOPGetValues(dat, curOp, row):\n#\treturn [curOp.digits, len(curOp.inputs)]\n\n# Uncomment the following to control which OPs are included\n\n#def onFindOPGetInclude(dat, curOp, row):\n#\treturn True\n\n\n# An extensive list of what was matched for each operator.\n# Multiple tags, parameters and cells are included.\n#\n# Format: dictionary\n#\n#  'name': curOp.name\n#  'type': curOp.OPType\n#  'path': curOp.path\n#  'parent' : curOp.parent()\n#  'comment': curOp.comment\n#  'tags' : [list of strings] or empty list\n#  'text' : [list of Cells] or empty list\n#  'par': dictionary of matching parameter atttributes.\n#    example entries:\n#        tx : { 'name': True, 'value':True , 'expression':True }\n#        ty : { 'value' : True }\n#\n\ndef onOPFound(dat, curOp, row, results):\n\treturn\n\n\t"
+        },
+        {
+          "path": "/project1/sceneChanger1/replicator1_callbacks",
+          "text": "# me - this DAT\n# \n# comp - the replicator component which is cooking\n# allOps - a list of all replicants, created or existing\n# newOps - the subset that were just created\n# template - table DAT specifying the replicator attributes\n# master - the master operator\n#\n\ndef onReplicate(comp, allOps, newOps, template, master):\n\n\tfor c in newOps:\n\t\t#c.display = True\n\t\t#c.render = True\n\t\t#c.par.display = 1\n\t\t#c.par.clone = comp.par.master\n\t\tc.allowCooking = True\n\t\tpass\n\n\treturn\n"
+        }
+      ]
+    },
+    {
+      "path": "/project1/sceneChanger1/sceneChangerUi",
+      "parameters": [
+        {
+          "name": "Scenechanger",
+          "label": "Scene Changer",
+          "style": "COMP",
+          "value": "/project1/sceneChanger1",
+          "expression": "parent.SceneChanger",
+          "menuNames": [],
+          "menuLabels": []
+        }
+      ],
+      "texts": [
+        {
+          "path": "/project1/sceneChanger1/sceneChangerUi/masterRadioButton/radioButtons0/RadioExt",
+          "text": "SubWidgetExt = mod.SubWidgetExt.SubWidgetExt\nTDF = op.TDModules.mod.TDFunctions\n\nclass RadioExt(SubWidgetExt):\n\t\"\"\"\n\tRadioExt description\n\t\"\"\"\n\tdef __init__(self, ownerComp):\n\t\t# The component to which this extension is attached\n\t\tself.parPrefix = 'Radio'\n\t\tSubWidgetExt.__init__(self, ownerComp)\n\n\tdef onPanelEvent(self, event, panelValue):\n\t\tif event == 'offToOn':\n\t\t\tsetattr(parent.Widget.par, 'Value'+str(self.ownerComp.digits),\n\t\t\t\t\tpanelValue.owner.digits)\n\n\tdef onParSettingsChange(self, par, prev):\n\t\t\"\"\"\n\t\tManages value changes widget settings parameters\n\t\t\"\"\"\n\t\tval = par.eval()\n\t\tif par.name in ['Minmax01', 'Minmax02', 'Default0']:\n\t\t\tself.ownerComp.op('replicator1').par.recreateall.pulse()\n\t\telse:\n\t\t\tSubWidgetExt.onParSettingsChange(self, par, prev)\n\n\tdef makePanelExecute(self):\n\t\tSubWidgetExt.makePanelExecute(self,\n\t\t\t\t\t\"me.dock.op('\" + self.ownerComp.name +\"').path + '/radio*'\")"
+        },
+        {
+          "path": "/project1/sceneChanger1/sceneChangerUi/masterRadioButton/radioButtons0/SubWidgetExt",
+          "text": "TDF = op.TDModules.mod.TDFunctions\n\n\nclass SubWidgetExt:\n\t\"\"\"\n\tRockerExt description\n\t\"\"\"\n\n\tdef __init__(self, ownerComp, indexComp=None):\n\t\t# The component to which this extension is attached\n\t\tself.ownerComp = ownerComp\n\t\tif indexComp:\n\t\t\tself.indexComp = indexComp\n\t\telse:\n\t\t\tself.indexComp = self.ownerComp\n\n\tdef onPanelEvent(self, event, panelValue):\n\t\t\"\"\"\n\t\tPanel exec events from widget\n\t\t\"\"\"\n\t\tpass\n\n\tdef onParSettingsChange(self, par, prev):\n\t\t\"\"\"\n\t\tManages value changes widget settings parameters\n\t\t\"\"\"\n\t\tval = par.eval()\n\t\tif par.name == self.parPrefix + 'runcommand':\n\t\t\tenable = par.eval()\n\t\t\tfor suffix in ['commandon', 'commandoff', 'commandonvaluechange']:\n\t\t\t\tp = self.prefixPar(suffix)\n\t\t\t\tif p is not None:\n\t\t\t\t\tp.enable = enable\n\t\telif par.name == self.parPrefix + 'horizontalmode':\n\t\t\tfill = True if val == 'fill' else False\n\t\t\tself.prefixPar('hfillweight').enable = fill\n\t\t\tself.prefixPar('width').enable = not fill\n\t\telif par.name == self.parPrefix + 'verticalmode':\n\t\t\tfill = True if val == 'fill' else False\n\t\t\tself.prefixPar('vfillweight').enable = fill\n\t\t\tself.prefixPar('height').enable = not fill\n\t\telif par.name in [self.parPrefix + 'bordera',\n\t\t\t\t\t\t  self.parPrefix + 'borderb',\n\t\t\t\t\t\t  self.parPrefix + 'border']:\n\t\t\tgetattr(parent.Widget.par, par.name + 'colorr').enable = par.eval()\n\n\tdef onParSettingsPulse(self, par):\n\t\t\"\"\"\n\t\tManages pulse events for widget settings parameters\n\t\t\"\"\"\n\t\tif par.name == self.parPrefix + 'customizeinteraction':\n\t\t\tself.makePanelExecute()\n\n\tdef onToggleEvent(self, event, panelValue):\n\t\tif event == 'offToOn':\n\t\t\tself.toggle()\n\n\tdef toggle(self):\n\t\tindex = self.indexComp.digits\n\t\tvaluePar = getattr(parent.Widget.par, 'Value' + str(index))\n\t\tvaluePar.val = 1 - valuePar.eval()\n\n\tdef prefixPar(self, suffix):\n\t\t\"\"\"\n\t\tReturn a parameter prefixed by parPrefix\n\t\t:param suffix: the par name after parPrefix (string)\n\t\t:return: the parameter or None if not found\n\t\t\"\"\"\n\t\treturn getattr(self.ownerComp.parent.Widget.par,\n\t\t\t\t\t   self.parPrefix + suffix, None)\n\n\tdef makePanelExecute(self, panelExpr=None):\n\t\t\"\"\"\n\t\tCreates a panel execute DAT for running external code from the\n\t\twidget that is connected to the button interaction receiver - which\n\t\tis the ownerComp of this class\n\n\t\tpanelExpr: will be used as the expression in the panel parameter of the \n\t\t\tpanelExec. Defaults to \"me.dock.op('\" + self.ownerComp.name +\"')\"\n\t\t\"\"\"\n\t\tpanelExecPar = self.PanelExecPar\n\t\tif not panelExecPar.eval():\n\t\t\tpeDat = self.ownerComp.parent.Widget.parent().create(\n\t\t\t\tpanelexecuteDAT, self.parPrefix + 'PanelExec')\n\t\t\tpeDat.nodeX = self.ownerComp.parent.Widget.nodeX - 200\n\t\t\tpeDat.nodeY = self.ownerComp.parent.Widget.nodeY\n\t\t\tpeDat.dock = self.ownerComp.parent.Widget\n\t\t\tpeDat.par.panel.expr = \"me.dock.op('\" + self.ownerComp.name + \"')\" \\\n\t\t\t\tif panelExpr is None else panelExpr\n\t\t\tpeDat.par.ontooff = True\n\t\t\tpeDat.viewer = True\n\t\t\tpanelExecPar.val = peDat.name\n\t\t\tpanelExecPar.enable = True\n\t\t\tpanelExecPar.readOnly = True\n\t\t\tself.ownerComp.op('panelExecOPExec').cook(force=True)\n\t\tpanelExecPar.eval().par.edit.pulse()\n\n\t@property\n\tdef PanelExecPar(self):\n\t\treturn getattr(parent.Widget.par, self.parPrefix + 'panelexec', None)\n\n"
+        }
+      ]
+    },
+    {
+      "path": "/project1/sceneChangerUi",
+      "parameters": [
+        {
+          "name": "Scenechanger",
+          "label": "Scene Changer",
+          "style": "COMP",
+          "value": "/project1/sceneChanger",
+          "expression": "parent.SceneChanger",
+          "menuNames": [],
+          "menuLabels": []
+        }
+      ],
+      "texts": [
+        {
+          "path": "/project1/sceneChangerUi/masterRadioButton/radioButtons0/RadioExt",
+          "text": "SubWidgetExt = mod.SubWidgetExt.SubWidgetExt\nTDF = op.TDModules.mod.TDFunctions\n\nclass RadioExt(SubWidgetExt):\n\t\"\"\"\n\tRadioExt description\n\t\"\"\"\n\tdef __init__(self, ownerComp):\n\t\t# The component to which this extension is attached\n\t\tself.parPrefix = 'Radio'\n\t\tSubWidgetExt.__init__(self, ownerComp)\n\n\tdef onPanelEvent(self, event, panelValue):\n\t\tif event == 'offToOn':\n\t\t\tsetattr(parent.Widget.par, 'Value'+str(self.ownerComp.digits),\n\t\t\t\t\tpanelValue.owner.digits)\n\n\tdef onParSettingsChange(self, par, prev):\n\t\t\"\"\"\n\t\tManages value changes widget settings parameters\n\t\t\"\"\"\n\t\tval = par.eval()\n\t\tif par.name in ['Minmax01', 'Minmax02', 'Default0']:\n\t\t\tself.ownerComp.op('replicator1').par.recreateall.pulse()\n\t\telse:\n\t\t\tSubWidgetExt.onParSettingsChange(self, par, prev)\n\n\tdef makePanelExecute(self):\n\t\tSubWidgetExt.makePanelExecute(self,\n\t\t\t\t\t\"me.dock.op('\" + self.ownerComp.name +\"').path + '/radio*'\")"
+        },
+        {
+          "path": "/project1/sceneChangerUi/masterRadioButton/radioButtons0/SubWidgetExt",
+          "text": "TDF = op.TDModules.mod.TDFunctions\n\n\nclass SubWidgetExt:\n\t\"\"\"\n\tRockerExt description\n\t\"\"\"\n\n\tdef __init__(self, ownerComp, indexComp=None):\n\t\t# The component to which this extension is attached\n\t\tself.ownerComp = ownerComp\n\t\tif indexComp:\n\t\t\tself.indexComp = indexComp\n\t\telse:\n\t\t\tself.indexComp = self.ownerComp\n\n\tdef onPanelEvent(self, event, panelValue):\n\t\t\"\"\"\n\t\tPanel exec events from widget\n\t\t\"\"\"\n\t\tpass\n\n\tdef onParSettingsChange(self, par, prev):\n\t\t\"\"\"\n\t\tManages value changes widget settings parameters\n\t\t\"\"\"\n\t\tval = par.eval()\n\t\tif par.name == self.parPrefix + 'runcommand':\n\t\t\tenable = par.eval()\n\t\t\tfor suffix in ['commandon', 'commandoff', 'commandonvaluechange']:\n\t\t\t\tp = self.prefixPar(suffix)\n\t\t\t\tif p is not None:\n\t\t\t\t\tp.enable = enable\n\t\telif par.name == self.parPrefix + 'horizontalmode':\n\t\t\tfill = True if val == 'fill' else False\n\t\t\tself.prefixPar('hfillweight').enable = fill\n\t\t\tself.prefixPar('width').enable = not fill\n\t\telif par.name == self.parPrefix + 'verticalmode':\n\t\t\tfill = True if val == 'fill' else False\n\t\t\tself.prefixPar('vfillweight').enable = fill\n\t\t\tself.prefixPar('height').enable = not fill\n\t\telif par.name in [self.parPrefix + 'bordera',\n\t\t\t\t\t\t  self.parPrefix + 'borderb',\n\t\t\t\t\t\t  self.parPrefix + 'border']:\n\t\t\tgetattr(parent.Widget.par, par.name + 'colorr').enable = par.eval()\n\n\tdef onParSettingsPulse(self, par):\n\t\t\"\"\"\n\t\tManages pulse events for widget settings parameters\n\t\t\"\"\"\n\t\tif par.name == self.parPrefix + 'customizeinteraction':\n\t\t\tself.makePanelExecute()\n\n\tdef onToggleEvent(self, event, panelValue):\n\t\tif event == 'offToOn':\n\t\t\tself.toggle()\n\n\tdef toggle(self):\n\t\tindex = self.indexComp.digits\n\t\tvaluePar = getattr(parent.Widget.par, 'Value' + str(index))\n\t\tvaluePar.val = 1 - valuePar.eval()\n\n\tdef prefixPar(self, suffix):\n\t\t\"\"\"\n\t\tReturn a parameter prefixed by parPrefix\n\t\t:param suffix: the par name after parPrefix (string)\n\t\t:return: the parameter or None if not found\n\t\t\"\"\"\n\t\treturn getattr(self.ownerComp.parent.Widget.par,\n\t\t\t\t\t   self.parPrefix + suffix, None)\n\n\tdef makePanelExecute(self, panelExpr=None):\n\t\t\"\"\"\n\t\tCreates a panel execute DAT for running external code from the\n\t\twidget that is connected to the button interaction receiver - which\n\t\tis the ownerComp of this class\n\n\t\tpanelExpr: will be used as the expression in the panel parameter of the \n\t\t\tpanelExec. Defaults to \"me.dock.op('\" + self.ownerComp.name +\"')\"\n\t\t\"\"\"\n\t\tpanelExecPar = self.PanelExecPar\n\t\tif not panelExecPar.eval():\n\t\t\tpeDat = self.ownerComp.parent.Widget.parent().create(\n\t\t\t\tpanelexecuteDAT, self.parPrefix + 'PanelExec')\n\t\t\tpeDat.nodeX = self.ownerComp.parent.Widget.nodeX - 200\n\t\t\tpeDat.nodeY = self.ownerComp.parent.Widget.nodeY\n\t\t\tpeDat.dock = self.ownerComp.parent.Widget\n\t\t\tpeDat.par.panel.expr = \"me.dock.op('\" + self.ownerComp.name + \"')\" \\\n\t\t\t\tif panelExpr is None else panelExpr\n\t\t\tpeDat.par.ontooff = True\n\t\t\tpeDat.viewer = True\n\t\t\tpanelExecPar.val = peDat.name\n\t\t\tpanelExecPar.enable = True\n\t\t\tpanelExecPar.readOnly = True\n\t\t\tself.ownerComp.op('panelExecOPExec').cook(force=True)\n\t\tpanelExecPar.eval().par.edit.pulse()\n\n\t@property\n\tdef PanelExecPar(self):\n\t\treturn getattr(parent.Widget.par, self.parPrefix + 'panelexec', None)\n\n"
+        }
+      ]
+    },
+    {
+      "path": "/project1/sceneChangerUi1",
+      "parameters": [
+        {
+          "name": "Scenechanger",
+          "label": "Scene Changer",
+          "style": "COMP",
+          "value": "/project1/sceneChanger1",
+          "expression": "parent.SceneChanger",
+          "menuNames": [],
+          "menuLabels": []
+        }
+      ],
+      "texts": [
+        {
+          "path": "/project1/sceneChangerUi1/masterRadioButton/radioButtons0/RadioExt",
+          "text": "SubWidgetExt = mod.SubWidgetExt.SubWidgetExt\nTDF = op.TDModules.mod.TDFunctions\n\nclass RadioExt(SubWidgetExt):\n\t\"\"\"\n\tRadioExt description\n\t\"\"\"\n\tdef __init__(self, ownerComp):\n\t\t# The component to which this extension is attached\n\t\tself.parPrefix = 'Radio'\n\t\tSubWidgetExt.__init__(self, ownerComp)\n\n\tdef onPanelEvent(self, event, panelValue):\n\t\tif event == 'offToOn':\n\t\t\tsetattr(parent.Widget.par, 'Value'+str(self.ownerComp.digits),\n\t\t\t\t\tpanelValue.owner.digits)\n\n\tdef onParSettingsChange(self, par, prev):\n\t\t\"\"\"\n\t\tManages value changes widget settings parameters\n\t\t\"\"\"\n\t\tval = par.eval()\n\t\tif par.name in ['Minmax01', 'Minmax02', 'Default0']:\n\t\t\tself.ownerComp.op('replicator1').par.recreateall.pulse()\n\t\telse:\n\t\t\tSubWidgetExt.onParSettingsChange(self, par, prev)\n\n\tdef makePanelExecute(self):\n\t\tSubWidgetExt.makePanelExecute(self,\n\t\t\t\t\t\"me.dock.op('\" + self.ownerComp.name +\"').path + '/radio*'\")"
+        },
+        {
+          "path": "/project1/sceneChangerUi1/masterRadioButton/radioButtons0/SubWidgetExt",
+          "text": "TDF = op.TDModules.mod.TDFunctions\n\n\nclass SubWidgetExt:\n\t\"\"\"\n\tRockerExt description\n\t\"\"\"\n\n\tdef __init__(self, ownerComp, indexComp=None):\n\t\t# The component to which this extension is attached\n\t\tself.ownerComp = ownerComp\n\t\tif indexComp:\n\t\t\tself.indexComp = indexComp\n\t\telse:\n\t\t\tself.indexComp = self.ownerComp\n\n\tdef onPanelEvent(self, event, panelValue):\n\t\t\"\"\"\n\t\tPanel exec events from widget\n\t\t\"\"\"\n\t\tpass\n\n\tdef onParSettingsChange(self, par, prev):\n\t\t\"\"\"\n\t\tManages value changes widget settings parameters\n\t\t\"\"\"\n\t\tval = par.eval()\n\t\tif par.name == self.parPrefix + 'runcommand':\n\t\t\tenable = par.eval()\n\t\t\tfor suffix in ['commandon', 'commandoff', 'commandonvaluechange']:\n\t\t\t\tp = self.prefixPar(suffix)\n\t\t\t\tif p is not None:\n\t\t\t\t\tp.enable = enable\n\t\telif par.name == self.parPrefix + 'horizontalmode':\n\t\t\tfill = True if val == 'fill' else False\n\t\t\tself.prefixPar('hfillweight').enable = fill\n\t\t\tself.prefixPar('width').enable = not fill\n\t\telif par.name == self.parPrefix + 'verticalmode':\n\t\t\tfill = True if val == 'fill' else False\n\t\t\tself.prefixPar('vfillweight').enable = fill\n\t\t\tself.prefixPar('height').enable = not fill\n\t\telif par.name in [self.parPrefix + 'bordera',\n\t\t\t\t\t\t  self.parPrefix + 'borderb',\n\t\t\t\t\t\t  self.parPrefix + 'border']:\n\t\t\tgetattr(parent.Widget.par, par.name + 'colorr').enable = par.eval()\n\n\tdef onParSettingsPulse(self, par):\n\t\t\"\"\"\n\t\tManages pulse events for widget settings parameters\n\t\t\"\"\"\n\t\tif par.name == self.parPrefix + 'customizeinteraction':\n\t\t\tself.makePanelExecute()\n\n\tdef onToggleEvent(self, event, panelValue):\n\t\tif event == 'offToOn':\n\t\t\tself.toggle()\n\n\tdef toggle(self):\n\t\tindex = self.indexComp.digits\n\t\tvaluePar = getattr(parent.Widget.par, 'Value' + str(index))\n\t\tvaluePar.val = 1 - valuePar.eval()\n\n\tdef prefixPar(self, suffix):\n\t\t\"\"\"\n\t\tReturn a parameter prefixed by parPrefix\n\t\t:param suffix: the par name after parPrefix (string)\n\t\t:return: the parameter or None if not found\n\t\t\"\"\"\n\t\treturn getattr(self.ownerComp.parent.Widget.par,\n\t\t\t\t\t   self.parPrefix + suffix, None)\n\n\tdef makePanelExecute(self, panelExpr=None):\n\t\t\"\"\"\n\t\tCreates a panel execute DAT for running external code from the\n\t\twidget that is connected to the button interaction receiver - which\n\t\tis the ownerComp of this class\n\n\t\tpanelExpr: will be used as the expression in the panel parameter of the \n\t\t\tpanelExec. Defaults to \"me.dock.op('\" + self.ownerComp.name +\"')\"\n\t\t\"\"\"\n\t\tpanelExecPar = self.PanelExecPar\n\t\tif not panelExecPar.eval():\n\t\t\tpeDat = self.ownerComp.parent.Widget.parent().create(\n\t\t\t\tpanelexecuteDAT, self.parPrefix + 'PanelExec')\n\t\t\tpeDat.nodeX = self.ownerComp.parent.Widget.nodeX - 200\n\t\t\tpeDat.nodeY = self.ownerComp.parent.Widget.nodeY\n\t\t\tpeDat.dock = self.ownerComp.parent.Widget\n\t\t\tpeDat.par.panel.expr = \"me.dock.op('\" + self.ownerComp.name + \"')\" \\\n\t\t\t\tif panelExpr is None else panelExpr\n\t\t\tpeDat.par.ontooff = True\n\t\t\tpeDat.viewer = True\n\t\t\tpanelExecPar.val = peDat.name\n\t\t\tpanelExecPar.enable = True\n\t\t\tpanelExecPar.readOnly = True\n\t\t\tself.ownerComp.op('panelExecOPExec').cook(force=True)\n\t\tpanelExecPar.eval().par.edit.pulse()\n\n\t@property\n\tdef PanelExecPar(self):\n\t\treturn getattr(parent.Widget.par, self.parPrefix + 'panelexec', None)\n\n"
+        }
+      ]
+    }
+  ],
+  "titles": [
+    {
+      "path": "/project1/null1",
+      "rows": [
+        [
+          "turntable1",
+          " \"19 - Triumph (Psa)\""
+        ],
+        [
+          "turntable2",
+          " \"08 - Go Crazy (Dont U Know) Ft Nas\""
+        ]
+      ]
+    }
+  ],
+  "scenes": [
+    "/project1/scenes/01_The_Smooth_Criminal_On_Beat_Breaks_"
+  ]
+}

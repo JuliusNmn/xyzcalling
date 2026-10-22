@@ -1,0 +1,20 @@
+{
+  "name": "motion-stage",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node --test test/*.test.js",
+    "demo": "node server/demo.js",
+    "test:integration": "node --test test/integration.test.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "three": "0.180.0",
+    "ws": "8.18.3",
+    "osc-min": "2.1.2"
+  }
+}

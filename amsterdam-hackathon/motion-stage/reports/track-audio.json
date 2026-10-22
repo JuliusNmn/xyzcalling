@@ -1,0 +1,136 @@
+[
+  {
+    "id": "real-house",
+    "title": "Real House Dancing",
+    "artist": "Dance Capture",
+    "sourceUrl": "https://www.youtube.com/watch?v=VJxjxXA3dCw",
+    "fbx": "/Users/moritzcarlonaeumann/2026-Calendar/projects/xyzcalling/videos/Real House Dancing.gvhmr.fbx",
+    "audio": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/Real House Dancing.mp3",
+    "audioDuration": 185.968617,
+    "captureDuration": 185.8523712158203,
+    "tags": {
+      "comment": "https://www.youtube.com/watch?v=VJxjxXA3dCw",
+      "title": "Real House Dancing",
+      "artist": "Dance Capture",
+      "album": "Motion Stage - Source Video Edits",
+      "encoder": "Lavf62.3.100"
+    },
+    "sourceAudio": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Real_House_Dancing_VJxjxXA3dCw.wav",
+    "status": "ready"
+  },
+  {
+    "id": "rumble",
+    "title": "Rumble",
+    "artist": "Skrillex, Fred again.. & Flowdan",
+    "sourceUrl": "https://www.youtube.com/watch?v=jnQItw0F7hU",
+    "fbx": "/Users/moritzcarlonaeumann/2026-Calendar/projects/xyzcalling/videos/Skrillex Fred Again.. Flowdan Rumble.gvhmr.fbx",
+    "audio": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/Rumble.mp3",
+    "audioDuration": 146.355375,
+    "captureDuration": 146.31243896484375,
+    "tags": {
+      "comment": "https://www.youtube.com/watch?v=jnQItw0F7hU",
+      "title": "Rumble",
+      "artist": "Skrillex, Fred again.. & Flowdan",
+      "album": "Motion Stage - Source Video Edits",
+      "encoder": "Lavf62.3.100"
+    },
+    "sourceAudio": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/sources/jnQItw0F7hU.webm",
+    "status": "ready"
+  },
+  {
+    "id": "wide-open",
+    "title": "Wide Open",
+    "artist": "The Chemical Brothers feat. Beck",
+    "sourceUrl": "https://www.youtube.com/watch?v=BC2dRkm8ATU",
+    "fbx": "/Users/moritzcarlonaeumann/2026-Calendar/projects/xyzcalling/videos/The Chemical Brothers - Wide Open (Official Music Video) ft. Beck.gvhmr.fbx",
+    "audio": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/Wide Open.mp3",
+    "audioDuration": 331.000454,
+    "captureDuration": 331,
+    "tags": {
+      "title": "Wide Open",
+      "artist": "The Chemical Brothers feat. Beck",
+      "album": "Motion Stage - Source Video Edits",
+      "comment": "https://www.youtube.com/watch?v=BC2dRkm8ATU",
+      "encoder": "Lavf62.3.100",
+      "id3v2_priv.com.apple.streaming.transportStreamTimestamp": "\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00"
+    },
+    "sourceAudio": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/sources/BC2dRkm8ATU.mp4",
+    "status": "ready"
+  },
+  {
+    "id": "freestyler",
+    "title": "Freestyler",
+    "artist": "Bomfunk MC's",
+    "sourceUrl": "https://www.youtube.com/watch?v=ymNFyxvIdaM",
+    "fbx": "/Users/moritzcarlonaeumann/2026-Calendar/projects/xyzcalling/videos/Bomfunk MC's - Freestyler (Video Original Version) [ymNFyxvIdaM].gvhmr.fbx",
+    "audio": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/Freestyler.mp3",
+    "audioDuration": 292.408896,
+    "captureDuration": 292.40000000000003,
+    "tags": {
+      "comment": "https://www.youtube.com/watch?v=ymNFyxvIdaM",
+      "title": "Freestyler",
+      "artist": "Bomfunk MC's",
+      "album": "Motion Stage - Source Video Edits",
+      "encoder": "Lavf62.3.100"
+    },
+    "sourceAudio": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/sources/ymNFyxvIdaM.webm",
+    "status": "ready"
+  },
+  {
+    "id": "ready",
+    "title": "Ready",
+    "artist": "Charmes feat. Da Professor",
+    "sourceUrl": "https://www.youtube.com/watch?v=cGAU_Xa-Xl0",
+    "fbx": "/Users/moritzcarlonaeumann/2026-Calendar/projects/xyzcalling/videos/Charmes ft. Da Professor - Ready (Official Music Video) [cGAU_Xa-Xl0].gvhmr.fbx",
+    "audio": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/Ready.mp3",
+    "audioDuration": 194.409083,
+    "captureDuration": 194.4027082171208,
+    "tags": {
+      "comment": "https://www.youtube.com/watch?v=cGAU_Xa-Xl0",
+      "title": "Ready",
+      "artist": "Charmes feat. Da Professor",
+      "album": "Motion Stage - Source Video Edits",
+      "encoder": "Lavf62.3.100"
+    },
+    "sourceAudio": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/sources/cGAU_Xa-Xl0.webm",
+    "status": "ready"
+  },
+  {
+    "id": "first-of-year",
+    "title": "First Of The Year",
+    "artist": "Skrillex",
+    "sourceUrl": "https://www.youtube.com/watch?v=2k0icW6kl7w",
+    "fbx": "/Users/moritzcarlonaeumann/2026-Calendar/projects/xyzcalling/videos/First Of The Year - Skrillex - Mike Song, The Kinjaz Crew, Dubstep - 310XT Films - URBAN DANCE CAMP.gvhmr.fbx",
+    "audio": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/First Of The Year.mp3",
+    "audioDuration": 142.485333,
+    "captureDuration": 142.44667053222656,
+    "tags": {
+      "comment": "https://www.youtube.com/watch?v=2k0icW6kl7w",
+      "title": "First Of The Year",
+      "artist": "Skrillex",
+      "album": "Motion Stage - Source Video Edits",
+      "encoder": "Lavf62.3.100"
+    },
+    "sourceAudio": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/First_Of_The_Year_UDC_2k0icW6kl7w.wav",
+    "status": "ready"
+  },
+  {
+    "id": "gal-a-bubble",
+    "title": "Gal a Bubble",
+    "artist": "Konshens",
+    "sourceUrl": "https://www.youtube.com/watch?v=pVLe-INswIs",
+    "fbx": "/Users/moritzcarlonaeumann/2026-Calendar/projects/xyzcalling/videos/Kirsten Dodgen choreography to \u201cGal a Bubble\u201d by Konshens at Offstage Dance Studio.gvhmr.fbx",
+    "audio": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/Gal a Bubble.mp3",
+    "audioDuration": 93.738688,
+    "captureDuration": 93.71862030029297,
+    "tags": {
+      "comment": "https://www.youtube.com/watch?v=pVLe-INswIs",
+      "title": "Gal a Bubble",
+      "artist": "Konshens",
+      "album": "Motion Stage - Source Video Edits",
+      "encoder": "Lavf62.3.100"
+    },
+    "sourceAudio": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/sources/pVLe-INswIs.webm",
+    "status": "ready"
+  }
+]

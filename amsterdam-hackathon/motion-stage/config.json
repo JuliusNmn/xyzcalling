@@ -1,0 +1,198 @@
+{
+  "httpHost": "127.0.0.1",
+  "httpPort": 3100,
+  "oscHost": "127.0.0.1",
+  "oscPort": 10003,
+  "fps": 30,
+  "staleSeconds": 3,
+  "beatsPerBar": 4,
+  "fallbacks": {
+    "1": "fallback-house",
+    "2": "fallback-ready"
+  },
+  "osc": {
+    "prefix": "/djay/turntable{deck}/",
+    "crossfader": "/djay/mixer/crossfader",
+    "crossfaderRange": [
+      0,
+      1
+    ],
+    "fields": {
+      "loaded": "song/loaded",
+      "title": "song/title",
+      "artist": "song/artist",
+      "album": "song/album",
+      "duration": "song/duration",
+      "artworkAvailable": "song/artworkAvailable",
+      "bpm": "playback/bpm",
+      "songBpm": "song/bpm",
+      "playing": "playback/playing",
+      "time": "playback/time",
+      "beat": "playback/beat",
+      "bar": "playback/bar",
+      "barPhase": "playback/barPhase",
+      "phase": "playback/phase"
+    },
+    "beatBase": 1,
+    "barBase": 1,
+    "timeScale": 1
+  },
+  "animations": [
+    {
+      "id": "real-house",
+      "name": "Real House Dancing",
+      "file": "../../videos/Real House Dancing.gvhmr.fbx",
+      "mode": "track",
+      "scale": 0.01,
+      "scene": "real-house",
+      "offsetSeconds": 0,
+      "match": {
+        "artist": "R\u00f6yksopp & Fever Ray",
+        "titles": [
+          "Real House Dancing",
+          "What Else Is There? (True Electric)"
+        ]
+      },
+      "sourceUrl": "https://www.youtube.com/watch?v=VJxjxXA3dCw",
+      "audio": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/Real House Dancing.mp3",
+      "artwork": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/artwork/real-house.jpg"
+    },
+    {
+      "id": "rumble",
+      "name": "Rumble",
+      "file": "../../videos/Skrillex Fred Again.. Flowdan Rumble.gvhmr.fbx",
+      "mode": "track",
+      "scale": 0.01,
+      "scene": "rumble",
+      "offsetSeconds": 0,
+      "match": {
+        "artist": "Skrillex, Fred again.. & Flowdan",
+        "titles": [
+          "Rumble",
+          "Flowdan Rumble"
+        ]
+      },
+      "sourceUrl": "https://www.youtube.com/watch?v=jnQItw0F7hU",
+      "audio": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/Rumble.mp3",
+      "artwork": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/artwork/rumble.jpg"
+    },
+    {
+      "id": "wide-open",
+      "name": "Wide Open",
+      "file": "../../videos/The Chemical Brothers - Wide Open (Official Music Video) ft. Beck.gvhmr.fbx",
+      "mode": "track",
+      "scale": 0.01,
+      "scene": "wide-open",
+      "offsetSeconds": 0,
+      "match": {
+        "artist": "The Chemical Brothers feat. Beck",
+        "titles": [
+          "Wide Open"
+        ]
+      },
+      "sourceUrl": "https://www.youtube.com/watch?v=BC2dRkm8ATU",
+      "audio": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/Wide Open.mp3",
+      "artwork": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/artwork/wide-open.jpg"
+    },
+    {
+      "id": "freestyler",
+      "name": "Freestyler",
+      "file": "../../videos/Bomfunk MC's - Freestyler (Video Original Version) [ymNFyxvIdaM].gvhmr.fbx",
+      "mode": "track",
+      "scale": 0.01,
+      "scene": "freestyler",
+      "offsetSeconds": 0,
+      "match": {
+        "artist": "Bomfunk MC's",
+        "titles": [
+          "Freestyler"
+        ]
+      },
+      "sourceUrl": "https://www.youtube.com/watch?v=ymNFyxvIdaM",
+      "audio": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/Freestyler.mp3",
+      "artwork": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/artwork/freestyler.jpg"
+    },
+    {
+      "id": "ready",
+      "name": "Ready",
+      "file": "../../videos/Charmes ft. Da Professor - Ready (Official Music Video) [cGAU_Xa-Xl0].gvhmr.fbx",
+      "mode": "track",
+      "scale": 0.01,
+      "scene": "ready",
+      "offsetSeconds": 0,
+      "match": {
+        "artist": "Charmes feat. Da Professor",
+        "titles": [
+          "Ready"
+        ]
+      },
+      "sourceUrl": "https://www.youtube.com/watch?v=cGAU_Xa-Xl0",
+      "audio": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/Ready.mp3",
+      "artwork": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/artwork/ready.jpg"
+    },
+    {
+      "id": "first-of-year",
+      "name": "First Of The Year",
+      "file": "../../videos/First Of The Year - Skrillex - Mike Song, The Kinjaz Crew, Dubstep - 310XT Films - URBAN DANCE CAMP.gvhmr.fbx",
+      "mode": "track",
+      "scale": 0.01,
+      "scene": "first-of-year",
+      "offsetSeconds": 0,
+      "match": {
+        "artist": "Skrillex",
+        "titles": [
+          "First Of The Year"
+        ]
+      },
+      "sourceUrl": "https://www.youtube.com/watch?v=2k0icW6kl7w",
+      "audio": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/First Of The Year.mp3",
+      "artwork": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/artwork/first-of-year.jpg"
+    },
+    {
+      "id": "gal-a-bubble",
+      "name": "Gal a Bubble",
+      "file": "../../videos/Kirsten Dodgen choreography to \u201cGal a Bubble\u201d by Konshens at Offstage Dance Studio.gvhmr.fbx",
+      "mode": "track",
+      "scale": 0.01,
+      "scene": "gal-a-bubble",
+      "offsetSeconds": 0,
+      "match": {
+        "artist": "Konshens",
+        "titles": [
+          "Gal a Bubble"
+        ]
+      },
+      "sourceUrl": "https://www.youtube.com/watch?v=pVLe-INswIs",
+      "audio": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/Gal a Bubble.mp3",
+      "artwork": "/Volumes/T7-2tb-2509/Projects/amsterdam-hackathon/Audio/Motion Stage/artwork/gal-a-bubble.jpg"
+    },
+    {
+      "id": "fallback-house",
+      "name": "Mannequin \u00b7 House loop",
+      "file": "../../videos/Real House Dancing.gvhmr.fbx",
+      "mode": "fallback",
+      "bars": 2,
+      "scale": 0.01,
+      "scene": "cyan",
+      "trimStart": 12.4,
+      "trimEnd": 16,
+      "loopBlendFraction": 0.12
+    },
+    {
+      "id": "fallback-ready",
+      "name": "Mannequin \u00b7 Groove loop",
+      "file": "../../videos/Charmes ft. Da Professor - Ready (Official Music Video) [cGAU_Xa-Xl0].gvhmr.fbx",
+      "mode": "fallback",
+      "bars": 2,
+      "scale": 0.01,
+      "scene": "amber",
+      "trimStart": 25.2,
+      "trimEnd": 28.8,
+      "loopBlendFraction": 0.12
+    }
+  ],
+  "djayHost": "127.0.0.1",
+  "djayPort": 10001,
+  "callbackBaseUrl": "http://127.0.0.1:3100",
+  "assetDirectory": "../../videos"
+}

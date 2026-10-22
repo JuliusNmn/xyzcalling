@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {fromBuffer} from 'osc-min';import {encodeOsc} from '../server/osc.js';
+test('outbound OSC requests preserve DataView bytes and callback URL',()=>{const b=encodeOsc({address:'/djay/request/turntable1/artwork',args:['http://127.0.0.1:3100/api/artwork/1/test']});assert.ok(b.length>40);const p=fromBuffer(b);assert.equal(p.address,'/djay/request/turntable1/artwork');assert.equal(p.args[0].value,'http://127.0.0.1:3100/api/artwork/1/test');});

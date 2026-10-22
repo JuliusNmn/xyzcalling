@@ -1,5 +1,24 @@
 # Amsterdam Hackathon Snapshot
 
+## Snapshot refresh · 22 October 2026
+
+Updated from `weisenhills/amsterdam-hackathon` commit
+`d3b6cfa5f06113bf072aef40f51fec069100c666` into `JuliusNmn/xyzcalling`.
+This directory now includes the complete tracked Motion Stage application,
+including Ready (Acid Rubber), What Else Is There? (the `real-house` sphere grid),
+Wide Open, Gal a Bubble, Freestyler, and First of the Year scenes, plus the
+committed stage controls, TouchDesigner snapshots, clips, mocap tools and reports.
+Animation-library paths are adjusted to this repository’s `videos/` directory.
+It remains a plain directory, with no nested Git repository or submodule.
+
+Run Motion Stage separately with `cd amsterdam-hackathon/motion-stage`,
+`npm ci`, then `npm start`. See its README for configuration and OSC routing.
+Media paths and the two Ch20 character symlinks retain the source machine's SSD
+locations; configure them for another machine. Dependencies, local configuration,
+models and other ignored runtime payloads are not part of this snapshot.
+
+The original snapshot notes below describe the earlier calibration work.
+
 Copied on 21 October 2026 into this separate subdirectory at Moritz's request.
 Source checkout: `weisenhills/amsterdam-hackathon`, base commit `bf0a87f`, plus
 its current uncommitted prototype work. This is a snapshot, not a nested Git repo
