@@ -207,10 +207,14 @@ commands, import example and limitations.
 ### GVHMR full-video motion capture
 
 The offline GVHMR pipeline recovers body rotations and root travel, retargets
-them to the textured Mixamo character, and writes `<video>.gvhmr.fbx` beside
+them to a neutral 4,810-triangle mannequin with Mixamo bone names, centers the
+hips horizontally on every frame, and writes `<video>.gvhmr.fbx` beside
 each source in `videos/`. It also saves SMPL-X motion in `.gvhmr.npz`, source
 and processing metadata in `.gvhmr.json`, and FBX round-trip checks in
 `.gvhmr.validation.json`.
+Turns remain, and a rolling floor estimate removes slow vertical drift while
+retaining short jumps and crouches. Use `--root-motion travel` for the original
+trajectory or `--character` to choose the original textured FBX.
 
 ```powershell
 ./scripts/setup-gvhmr.ps1 -SmplxModel 'C:/path/to/SMPLX_NEUTRAL.npz'

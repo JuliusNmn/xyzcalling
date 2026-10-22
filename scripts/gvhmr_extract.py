@@ -175,8 +175,13 @@ def main():
     parser.add_argument('--preprocess-only', action='store_true')
     parser.add_argument('--inspect-only', action='store_true')
     parser.add_argument('--blender', type=Path, default=ROOT / 'artifacts/blender/blender-4.2.0-windows-x64/blender.exe')
-    parser.add_argument('--character', type=Path, default=ROOT / 'amsterdam-hackathon/Geo/Chicken Dance.fbx')
+    parser.add_argument('--character', type=Path, default=ROOT / 'assets/characters/neutral-low-poly.fbx')
+    parser.add_argument('--root-motion', choices=['in-place', 'travel'], default='in-place')
+    parser.add_argument('--force-predict', action='store_true', help='Recompute motion, reusing video preprocessing')
     args = parser.parse_args()
+    # Resolve before changing into the GVHMR checkout.
+    args.character = args.character.resolve()
+    args.blender = args.blender.resolve()
     if args.batch_size < 1:
         parser.error('--batch-size must be positive')
     repo = args.gvhmr.resolve()
@@ -184,6 +189,9 @@ def main():
     if not videos:
         parser.error('No videos found')
     sys.path.insert(0, str(repo))
+    if not args.inspect_only:
+        from gvhmr_memory import install
+        install()
     os.chdir(repo)
     verified_weights = {}
     if not args.inspect_only:
@@ -233,7 +241,7 @@ def main():
                     K_fullimg=estimate_K(width, height).repeat(valid_count, 1, 1),
                     cam_angvel=compute_cam_angvel(rotations[:valid_count]), f_imgseq=features[:valid_count])
         result = work / 'hmr4d_results.pt'
-        pred = torch.load(result, map_location='cpu') if result.exists() else predict(data, result, repo, args.static_camera)
+        pred = torch.load(result, map_location='cpu') if result.exists() and not args.force_predict else predict(data, result, repo, args.static_camera)
         if valid_count < count:
             def pad(value):
                 return torch.cat([value, value[-1:].expand(count - len(value), *value.shape[1:])])
@@ -242,7 +250,7 @@ def main():
                 pred[key] = pad(pred[key])
         motion = video.with_suffix('.gvhmr.npz')
         meta = {k: v for k, v in info.items() if k not in {'timestamps', 'blank_frames'}}
-        meta.update(inference_fps=30, inference_frames=count, static_camera=args.static_camera,
+        meta.update(inference_fps=30, inference_frames=count, static_camera=args.static_camera, root_motion=args.root_motion,
                     recovered_frames=valid_count, held_black_outro_frames=count - valid_count,
                     checkpoints_sha256=verified_weights,
                     gvhmr_commit=subprocess.check_output(['git', '-C', str(repo), 'rev-parse', 'HEAD'], text=True).strip(),
@@ -253,9 +261,10 @@ def main():
                             rest_joints=pred['rest_joints'].numpy(), duration=info['duration'], fps=30.,
                             source_timestamps=np.array(info['timestamps']) - info['first_pts'])
         video.with_suffix('.gvhmr.json').write_text(json.dumps(meta, indent=2), encoding='utf-8')
-        subprocess.run([str(args.blender.resolve()), '--background', '--python-exit-code', '1', '--python',
+        subprocess.run([str(args.blender.resolve()), '--background', '--threads', '1', '--python-exit-code', '1', '--python',
                         str(ROOT / 'scripts/gvhmr_retarget.py'), '--', '--input', str(motion),
-                        '--character', str(args.character.resolve()), '--output', str(video.with_suffix('.gvhmr.fbx'))], check=True)
+                        '--character', str(args.character.resolve()), '--root-motion', args.root_motion,
+                        '--output', str(video.with_suffix('.gvhmr.fbx'))], check=True)
 
 
 if __name__ == '__main__':

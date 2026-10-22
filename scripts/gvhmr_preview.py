@@ -16,6 +16,7 @@ def main():
     parser.add_argument('--fbx', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--samples', type=int, default=5)
+    parser.add_argument('--follow-root', action='store_true', help='Follow travel; default camera stays at origin')
     args = parser.parse_args(sys.argv[sys.argv.index('--') + 1:])
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.fbx(filepath=str(args.fbx.resolve()), automatic_bone_orientation=False)
@@ -23,7 +24,7 @@ def main():
     rig, = [o for o in scene.objects if o.type == 'ARMATURE']
     start, end = rig.animation_data.action.frame_range
     scene.render.engine = 'BLENDER_EEVEE_NEXT'
-    scene.render.resolution_x, scene.render.resolution_y = 400, 600
+    scene.render.resolution_x, scene.render.resolution_y = 600, 600
     scene.render.resolution_percentage = 100
     scene.render.image_settings.file_format = 'PNG'
     scene.world = bpy.data.worlds.new('World')
@@ -35,7 +36,7 @@ def main():
     camera = bpy.context.object
     scene.camera = camera
     camera.data.type = 'ORTHO'
-    camera.data.ortho_scale = 2.7
+    camera.data.ortho_scale = 3.2
     lights = []
     for offset, power, size in [((2, -3, 4), 500, 4), ((-3, -2, 2), 250, 3), ((0, 3, 3), 350, 2)]:
         bpy.ops.object.light_add(type='AREA')
@@ -50,7 +51,7 @@ def main():
         bpy.context.view_layer.update()
         hips = next(b for b in rig.pose.bones if b.name.endswith('Hips'))
         pos = rig.matrix_world @ hips.head
-        center = Vector((pos.x, pos.y, 1))
+        center = Vector((pos.x, pos.y, 1)) if args.follow_root else Vector((0, 0, 1))
         camera.location = center + Vector((0, -5, .2))
         aim(camera, center)
         for light, offset in lights:

@@ -1,0 +1,47 @@
+{
+  "duration": 130.21370819987186,
+  "inference_frames": 3907,
+  "keyed_samples": 3908,
+  "root_motion": "in-place",
+  "vertical_grounding": "3s lower-envelope",
+  "removed_vertical_drift_range_m": 0.8677965798598002,
+  "fps": 30.0,
+  "translation_scale": 1.0490424989893736,
+  "floor_offset": -0.8077020349737722,
+  "initial_heading_alignment_degrees": 66.2008953418178,
+  "controlled_bones": [
+    "Hips",
+    "LeftUpLeg",
+    "RightUpLeg",
+    "Spine",
+    "LeftLeg",
+    "RightLeg",
+    "Spine1",
+    "LeftFoot",
+    "RightFoot",
+    "Spine2",
+    "LeftToeBase",
+    "RightToeBase",
+    "Neck",
+    "LeftShoulder",
+    "RightShoulder",
+    "Head",
+    "LeftArm",
+    "RightArm",
+    "LeftForeArm",
+    "RightForeArm",
+    "LeftHand",
+    "RightHand"
+  ],
+  "validation": {
+    "exported_duration": 130.21370442708334,
+    "max_position_error_m": 1.4731062161067446e-06,
+    "max_rotation_error_degrees": 0.0,
+    "max_horizontal_hips_distance_m": 2.5210266585419934e-07,
+    "centered_frames_checked": 3908,
+    "hips_height_range_m": [
+      -0.2358441948890686,
+      1.79087495803833
+    ]
+  }
+}
